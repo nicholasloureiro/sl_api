@@ -341,6 +341,12 @@ def build_comprehensive_where_conditions(filters: FilterRequest) -> tuple[List[s
 # MAIN DASHBOARD ENDPOINTS
 # =============================================================================
 
+
+@app.get("/")
+def root():
+    return {"ok": True}
+
+
 @app.post("/dashboard/overview")
 @query_timer
 async def get_dashboard_overview(
