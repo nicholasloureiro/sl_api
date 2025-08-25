@@ -9,7 +9,7 @@ class DatabaseSettings(BaseSettings):
     CH_DATABASE: str = "default"
 
     model_config = SettingsConfigDict(
-        env_file="/home/nicholas10/vacinas/.env",
+        env_file="./.env",
         env_ignore_empty=True,
         extra="ignore",
     )
