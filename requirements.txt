@@ -1,3 +1,4 @@
+agno==1.8.0
 aiochclient==2.6.0
 aiohappyeyeballs==2.6.1
 aiohttp==3.12.15
@@ -6,6 +7,7 @@ altair==5.5.0
 annotated-types==0.7.0
 anyio==4.10.0
 async-timeout==5.0.1
+asyncpg==0.30.0
 attrs==25.3.0
 blinker==1.9.0
 cachetools==5.5.2
@@ -13,7 +15,9 @@ certifi==2025.8.3
 charset-normalizer==3.4.3
 click==8.2.1
 clickhouse-connect==0.8.18
+distro==1.9.0
 dnspython==2.7.0
+docstring_parser==0.17.0
 email_validator==2.2.0
 exceptiongroup==1.3.0
 fastapi==0.116.1
@@ -30,6 +34,7 @@ httpx==0.28.1
 idna==3.10
 itsdangerous==2.2.0
 Jinja2==3.1.6
+jiter==0.10.0
 jsonschema==4.25.1
 jsonschema-specifications==2025.4.1
 lz4==4.4.4
@@ -38,14 +43,17 @@ MarkupSafe==3.0.2
 mdurl==0.1.2
 multidict==6.6.4
 narwhals==2.1.2
-
+numpy==2.0.2
+openai==1.101.0
 orjson==3.11.2
 packaging==24.2
-
+pandas==2.2.3
+pgvector==0.4.1
 pillow==10.4.0
 plotly==6.3.0
 propcache==0.3.2
 protobuf==5.29.5
+psycopg2-binary==2.9.10
 pyarrow==21.0.0
 pydantic==2.11.7
 pydantic-extra-types==2.10.5
@@ -65,6 +73,7 @@ rich==13.9.4
 rich-toolkit==0.15.0
 rignore==0.6.4
 rpds-py==0.27.0
+scalar_fastapi==1.3.0
 sentry-sdk==2.35.0
 shellingham==1.5.4
 six==1.17.0
@@ -74,10 +83,13 @@ SQLAlchemy==2.0.43
 sqlmodel==0.0.24
 sqlparse==0.5.3
 starlette==0.47.3
-
+streamlit==1.37.1
+streamlit-aggrid==1.1.8
 tenacity==8.5.0
 toml==0.10.2
+tomli==2.2.1
 tornado==6.5.2
+tqdm==4.67.1
 typer==0.16.1
 typing-inspection==0.4.1
 typing_extensions==4.14.1
