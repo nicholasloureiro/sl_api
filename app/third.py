@@ -58,7 +58,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 # Service Configuration
-APP_TITLE = os.getenv("APP_TITLE", "Adventure Works ClickHouse Analytics API")
+APP_TITLE = os.getenv("APP_TITLE", "Analytic Agents API")
 HOST = os.getenv("HOST", "0.0.0.0")
 PORT = int(os.getenv("PORT", 8000))
 WORKERS = int(os.getenv("WORKERS", 2))
