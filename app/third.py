@@ -398,6 +398,12 @@ When a question requires data, write ONE correct SQL query and execute it via th
         - ClickHouse syntax only (LIMIT, toDate(), etc)
         - Never run DDL/DML.
         - Use db.table (or `db`.`table`) for fully-qualified names.
+        - "mais tomou vacinas" → agrupar por `codigo_paciente` e ordenar por `count() DESC`.
+        - "mais velho" → ordenar por nascimento ASC (ou idade DESC), após filtrar idade.
+        - Em `vacinas.events`, `nome_raca_cor_paciente` tem valores FIXOS (ALL CAPS, sem acentos):
+        PARDA, BRANCA, AMARELA, INDIGENA, PRETA, SEM INFORMACAO
+        - Se o usuário escrever "indígena" (com acento/minúsculas), mapear para 'INDIGENA'.
+
         
         <semantic_model>
             {self.semantic_model_str}
