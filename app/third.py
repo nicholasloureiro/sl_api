@@ -21,6 +21,7 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 from rich.console import Console
 from rich.panel import Panel
+from fastapi.responses import HTMLResponse
 from scalar_fastapi import get_scalar_api_reference
 
 # Agno imports
@@ -154,19 +155,18 @@ class ClickHouseClient:
 _CLICKHOUSE_CLIENT_SINGLETON = ClickHouseClient()
 
 
-@tool(show_result=False)
+@tool(show_result=True)
 def render_plotly_chart(
     sql: str,
-    kind: str = "bar",               # "bar" | "line" | "scatter" | "area" | "pie" | "histogram"
+    kind: str = "bar",
     x: Optional[str] = None,
     y: Optional[str] = None,
     color: Optional[str] = None,
     title: Optional[str] = None,
     filename: Optional[str] = None,
-) -> str:
+):
     """
-    Execute a SQL query on ClickHouse, build a Plotly chart, save a self-contained HTML file,
-    and return the saved file path.
+    Execute a SQL query on ClickHouse, build a Plotly chart, and RETURN the raw HTML string.
 
     The agent should pick sensible defaults if x/y aren't provided (e.g., the first 2 columns).
     """
@@ -190,23 +190,18 @@ def render_plotly_chart(
         elif kind == "area":
             fig = px.area(df, x=x, y=y, color=color, title=title)
         elif kind == "pie":
-            # For pie, use x as names and y as values
             fig = px.pie(df, names=x, values=y, title=title)
         elif kind == "histogram":
             fig = px.histogram(df, x=x, y=y, color=color, title=title)
         else:
-            # default bar
             fig = px.bar(df, x=x, y=y, color=color, title=title)
 
-        # Save a self-contained HTML (embeds plotly.js)
-        output_path = Path(str(output_dir))
-        output_path.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        file_name = filename or f"chart_{kind}_{timestamp}.html"
-        file_path = output_path / file_name
-        fig.write_html(str(file_path), include_plotlyjs=True, full_html=True)
+        # ⬇️ Return RAW HTML (no file write needed)
+        # full_html=False returns only the <div> + script (easier to embed)
+        html_str = fig.to_html(include_plotlyjs=False, full_html=False)
+    
+        return {"type": "chart_html", "kind": kind, "html": html_str}
 
-        return f"Gráfico salvo em: {file_path}"
     except Exception as e:
         return f"Erro ao gerar gráfico: {str(e)}"
 
@@ -581,21 +576,55 @@ async def execute_sql_analytics_query(
             run_stream = agent.run(
                 request.query,
                 stream=True,
-                stream_intermediate_steps=True,  # see tool events as they happen
-            )
+                stream_intermediate_steps=True,
+                )
 
             async def stream_generator():
-                # initial ping
-                yield f"data: {json.dumps({'status': 'processing', 'message': 'Analisando sua consulta...', 'is_chart': is_chart}, ensure_ascii=False)}\n\n"
+                yield f"data: {json.dumps({'status':'processing','message':'Analisando sua consulta...','is_chart':is_chart}, ensure_ascii=False)}\n\n"
                 for chunk in run_stream:
+                    event = getattr(chunk, "event", None)
+                    content = getattr(chunk, "content", None)
+
+                    # === Only pass through tool HTML; drop markdown chatter ===
+                    if event == "ToolResult":
+                        # Case 1: our structured return
+                        if isinstance(content, dict) and content.get("type") == "chart_html":
+                            payload = {
+                                "status": "streaming",
+                                "event": event,
+                                "timestamp": datetime.now().isoformat(),
+                                "is_chart": True,
+                                "html": content["html"],
+                            }
+                            yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                            continue
+
+                        # Case 2: fallback if tool returns a raw string of HTML
+                        if isinstance(content, str) and content.lstrip().startswith("<"):
+                            payload = {
+                                "status": "streaming",
+                                "event": event,
+                                "timestamp": datetime.now().isoformat(),
+                                "is_chart": True,
+                                "html": content,
+                            }
+                            yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                            continue
+
+                    # For chart runs, ignore the model’s markdown tokens
+                    if is_chart and event == "RunResponseContent":
+                        continue
+
+                    # Non-chart or other events → pass through as text
                     payload = {
                         "status": "streaming",
-                        "event": getattr(chunk, "event", None),
-                        "content": getattr(chunk, "content", None),
+                        "event": event,
                         "timestamp": datetime.now().isoformat(),
                         "is_chart": is_chart,
+                        "content": content,
                     }
                     yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
                 yield f"data: {json.dumps({'status': 'stream_end', 'is_chart': is_chart}, ensure_ascii=False)}\n\n"
 
             return StreamingResponse(
@@ -616,16 +645,20 @@ async def execute_sql_analytics_query(
                 session_id=request.session_id,
                 debug_mode=request.debug_mode,
             )
+            # Non-stream branch:
             run = agent.run(request.query)
-            reasoning = getattr(run, "content", str(run))
+            result = getattr(run, "content", str(run))
+            is_html = isinstance(result, str) and result.lstrip().startswith("<")
+
             return {
                 "status": "completed",
-                "reasoning": reasoning,
                 "session_id": request.session_id,
                 "user_id": request.user_id,
                 "model_used": request.model_id,
                 "timestamp": datetime.now().isoformat(),
-                "is_chart": is_chart,
+                "is_chart": is_chart or is_html,
+                "html": result if is_html else None,
+                "reasoning": None if is_html else result,
             }
 
     except Exception as e:
