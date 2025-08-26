@@ -1,0 +1,1 @@
+SELECT sigla_uf_paciente AS StateCode, count(*) AS TotalDoses FROM vacinas.events GROUP BY sigla_uf_paciente ORDER BY TotalDoses DESC LIMIT 1

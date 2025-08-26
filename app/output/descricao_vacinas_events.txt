@@ -1,0 +1,16 @@
+### Descrição da Tabela: vacinas.events
+
+A tabela `vacinas.events` contém registros individuais de eventos de vacinação provenientes do feed RNDS (Registro Nacional de Dados em Saúde) do Brasil. Os dados incluem informações demográficas dos pacientes (sexo, raça/cor, nacionalidade, estado), detalhes imunobiológicos (código/nome da vacina, fabricante, dose, via de administração), registros de tempo (data da vacinação, data de entrada no RNDS), dados do estabelecimento (nome legal, cidade, estado, tipo de propriedade) e metadados de campanha/estratégia.
+
+#### Principais Colunas:
+- **descrição_vacina**: Nome da vacina administrada
+- **codigo_vacina**: Código de identificação da vacina
+- **sigla_vacina**: Sigla da vacina
+- **data_vacina**: Data em que a vacina foi administrada
+- **sigla_uf_paciente**: Sigla da unidade federativa do paciente
+- **tipo_sexo_paciente**: Sexo do paciente (masculino/feminino)
+- **nome_municipio_estabelecimento**: Nome do município do estabelecimento de saúde
+- **descricao_tipo_estabelecimento**: Tipo do estabelecimento que realizou a vacinação
+
+#### Uso:
+Esta tabela é essencial para análises de cobertura e adesão à vacinação ao longo do tempo, desagregações por região (estado/município), estabelecimento, e dados demográficos, além de permitir a avaliação da eficácia de campanhas e estratégias de vacinação, comparação entre fabricantes, e detecção de atrasos e padrões de abandono de doses.

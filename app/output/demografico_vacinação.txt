@@ -1,0 +1,25 @@
+Demográfico que mais toma vacinas: 
+- Raça/Cor: PARDA, Total: 3,622,232
+
+Demográfico que menos toma vacinas: 
+- Raça/Cor: INDIGENA, Total: 41,513
+
+Demográfico por sexo que mais toma vacinas: 
+- Sexo: F, Total: 4,720,144
+
+Demográfico por sexo que menos toma vacinas: 
+- Sexo: I, Total: 444
+
+Estado com mais vacinas aplicadas: 
+- Sigla: SP, Total: 1,988,506
+
+Estado com menos vacinas aplicadas: 
+- Sigla: AP, Total: 42,084
+
+Município com mais vacinas aplicadas: 
+- Nome: SAO PAULO, Total: 542,051
+
+Município com menos vacinas aplicadas: 
+- Nome: SETOR COMPLEMENTAR DE INDUSTRIA E ABASTECIMENTO, Total: 1
+
+Total de vacinas aplicadas no Brasil: 9,083,000
