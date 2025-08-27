@@ -1,1452 +1,334 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
+  <title>Chatzinho VAXA</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dashboard Analytics de Vacinação</title>
-  <!-- TailwindCSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Icons -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css" />
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
-  <!-- Choices.js -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@11.0.3/public/assets/styles/choices.min.css" />
-  <script src="https://cdn.jsdelivr.net/npm/choices.js@11.0.3/public/assets/scripts/choices.min.js"></script>
-  <!-- noUiSlider -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.8.1/dist/nouislider.min.css" />
-  <script src="https://cdn.jsdelivr.net/npm/nouislider@15.8.1/dist/nouislider.min.js"></script>
-  <!-- Tabulator -->
-  <link href="https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.5/dist/css/tabulator.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/tabulator-tables@6.2.5/dist/js/tabulator.min.js"></script>
-  
+  <!-- Plotly (para renderizar as figuras) -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
-    :root { 
-      --primary: #10b981; 
-      --primary-dark: #059669; 
-      --secondary: #2563eb; 
-      --accent: #f59e0b; 
-      --danger: #ef4444;
-      --success: #22c55e;
-      --warning: #f59e0b;
-    }
-    
-    body {
-      background: linear-gradient(135deg, #011602 0%, #b4cda2 100%);
-      min-height: 100vh;
-      margin: 0;
-      padding: 0;
-      overflow-x: hidden; 
-    }
-    
-    .glass-card { 
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    }
-    
-    .metric-card { 
-      background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-      border: 1px solid rgba(148, 163, 184, 0.1);
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .metric-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: var(--primary);
-      border-radius: 0.5rem 0.5rem 0 0;
-    }
-    
-    .metric-card:hover { 
-      transform: translateY(-4px);
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-      border-color: var(--primary);
-    }
-    
-    /* Fix for chart containers overflow */
-    .chart-container {
-      background: rgba(255, 255, 255, 0.98);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      transition: all 0.3s ease;
-      overflow: hidden;
-    }
-    
-    .chart-container:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-    }
-    
-    .sidebar {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(20px);
-      border-right: 1px solid rgba(255, 255, 255, 0.2);
-    }
-    
-    
-    .btn-primary { 
-      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-      border: none;
-      color: white;
-      transition: all 0.3s ease;
-    }
-    
-    .btn-primary:hover { 
-      transform: translateY(-1px);
-      box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3);
-    }
-    
-    .btn-secondary { 
-      background: rgba(148, 163, 184, 0.1);
-      border: 1px solid rgba(148, 163, 184, 0.3);
-      color: #64748b;
-      transition: all 0.3s ease;
-    }
-    
-    .btn-secondary:hover {
-      background: rgba(148, 163, 184, 0.2);
-      border-color: var(--primary);
-    }
-    
-    .insight-banner {
-      background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-      border: 1px solid #93c5fd;
-      border-radius: 1rem;
-    }
-    
-    .badge-success { background: #dcfce7; color: #166534; }
-    .badge-warning { background: #fef3c7; color: #92400e; }
-    .badge-danger { background: #fecaca; color: #991b1b; }
-    
-    .skeleton { 
-      background: linear-gradient(90deg, #f1f5f9, #e2e8f0, #f1f5f9); 
-      background-size: 200% 100%; 
-      animation: shimmer 2s infinite;
-    }
-    
-    @keyframes shimmer { 
-      0% { background-position: 200% 0; } 
-      100% { background-position: -200% 0; } 
-    }
-    
-    .filter-section {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(20px);
-    }
-    
-    .stats-grid { 
-      display: grid; 
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
-      gap: 1.5rem; 
-    }
-    
-    .charts-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-      gap: 1.5rem;
-    }
-    
-    .story-highlight {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      font-weight: 700;
-    }
-
-    /* Main container fix */
-    .main-container {
-      width: 100%;
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 0 1rem;
-    }
-
-    .content-wrapper {
-      display: grid;
-      grid-template-columns: 300px 1fr;
-      gap: 1.5rem;
-      width: 100%;
-    }
-
-    /* Responsividade */
-    @media (max-width: 1024px) {
-      .content-wrapper { 
-        grid-template-columns: 1fr; 
-      }
-      .filter-section { 
-        position: relative; 
-        top: auto; 
-        width: 100%;
-      }
-      .charts-grid { 
-        grid-template-columns: 1fr; 
-      }
-      .main-container {
-        padding: 0 1rem;
-      }
-    }
-    
-    @media (max-width: 768px) {
-      .main-container { 
-        padding: 0 0.75rem; 
-      }
-      .stats-grid { 
-        grid-template-columns: repeat(2, 1fr); 
-      }
-      .charts-grid { 
-        grid-template-columns: 1fr; 
-      }
-      .chart-container { 
-        padding: 1rem; 
-      }
-      .filter-section { 
-        padding: 1rem; 
-      }
-      .flex-col-mobile { 
-        flex-direction: column; 
-      }
-      .gap-mobile { 
-        gap: 0.75rem; 
-      }
-    }
-    
-    @media (max-width: 640px) {
-      .stats-grid { 
-        grid-template-columns: 1fr; 
-      }
-      .text-2xl { 
-        font-size: 1.5rem; 
-      }
-      .text-3xl { 
-        font-size: 2rem; 
-      }
-      .h-80 { 
-        height: 250px; 
-      }
-      .h-96 { 
-        height: 300px; 
-      }
-      .main-container {
-        padding: 0 0.5rem;
-      }
-    }
-
-    /* Ensure full width utilization */
-    .full-width {
-      width: 100%;
-    }
-
-    /* Fix for header centering */
-    .header-container {
-      width: 100%;
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 0 1.5rem;
-    }
-
-    @media (max-width: 768px) {
-      .header-container {
-        padding: 0 1rem;
-      }
-    }
+    :root { --bg:#0b1220; --panel:#121a2b; --text:#eaf0ff; --muted:#9bb0d3; --accent:#5aa0ff; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--bg); color:var(--text); }
+    header { padding:16px 20px; border-bottom:1px solid #1e2a44; }
+    header h1 { margin:0; font-size:18px; }
+    .container { max-width: 920px; margin: 0 auto; padding: 20px; }
+    .chat { background:var(--panel); border:1px solid #1e2a44; border-radius:14px; padding:12px; min-height: 420px; display:flex; flex-direction:column; gap:10px; }
+    .msg { padding:10px 12px; border-radius:10px; max-width:80%; line-height:1.4; }
+    .msg.user { align-self:flex-end; background:#1e2a44; }
+    .msg.bot { align-self:flex-start; background:#0d1527; border:1px solid #1e2a44; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .row { display:flex; gap:10px; margin-top:14px; }
+    input[type="text"] { flex:1; padding:12px 14px; border-radius:10px; border:1px solid #1e2a44; background:#0d1527; color:var(--text); }
+    button { padding:12px 16px; border-radius:10px; border:1px solid #1e2a44; background:var(--accent); color:white; cursor:pointer; }
+    button:disabled { opacity:0.6; cursor:not-allowed; }
+    .toolbar { display:flex; gap:10px; align-items:center; margin-top:8px; color:var(--muted); font-size:13px; }
+    .chip { border:1px solid #1e2a44; padding:6px 8px; border-radius:999px; }
+    .chart-host { background:#0b1326; border:1px dashed #28406f; border-radius:12px; padding:8px; margin-top:6px; }
+    .hr { height:1px; background:#1e2a44; margin:6px 0; }
+    a { color:#79b4ff; }
+    .tiny { font-size:11px; color:#8aa3cf; }
   </style>
 </head>
-
-<body class="text-gray-800">
-  <!-- Header -->
-  <header class="sticky top-0 z-50 glass-card border-b border-white/20">
-    <div class="header-container py-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl text-white">
-          <i class="ti ti-vaccine text-2xl"></i>
-        </div>
-        <div>
-          <h1 class="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-            Dashboard de Vacinação
-          </h1>
-          <p class="text-sm text-gray-500">Sistema Nacional de Imunização</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-3">
-        <span id="lastUpdate" class="text-sm text-gray-500">—</span>
-        <button id="refreshBtn" class="btn-secondary px-4 py-2 rounded-xl flex items-center gap-2 font-medium">
-          <i class="ti ti-refresh"></i> Atualizar
-        </button>
-      </div>
-    </div>
+<body>
+  <header>
+    <h1>💬 Chatzinho VAXA • teste de gráficos (Plotly JSON)</h1>
   </header>
+  <div class="container">
+    <div class="toolbar">
+      <span class="chip">Endpoint: <code id="endpoint-label"></code></span>
+      <span class="chip">Streaming SSE via fetch</span>
+      <span class="chip">Retorno: JSON/“pythonish” (Plotly)</span>
+    </div>
 
-  <div class="main-container py-6">
-    <div class="content-wrapper">
-      <!-- Sidebar de Filtros -->
-      <aside class="filter-section rounded-2xl p-4 md:p-6 h-fit lg:sticky lg:top-24">
-        <div class="flex items-center gap-2 mb-6">
-          <i class="ti ti-filter text-xl text-blue-600"></i>
-          <h2 class="text-lg font-semibold">Filtros</h2>
-        </div>
-        
-        <div class="space-y-5">
-          <!-- Período -->
-          <div>
-            <label class="block text-sm font-medium mb-2">Período</label>
-            <select id="presetSelect" class="w-full border border-gray-200 rounded-xl p-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20">
-              <option value="last_30_days">Últimos 30 dias</option>
-              <option value="last_7_days">Últimos 7 dias</option>
-              <option value="last_90_days">Últimos 90 dias</option>
-              <option value="ytd">Este ano</option>
-              <option value="custom">Personalizado</option>
-            </select>
-            <div id="customDate" class="hidden mt-3 grid grid-cols-2 gap-2">
-              <input id="startDate" type="date" class="border border-gray-200 rounded-xl p-2" />
-              <input id="endDate" type="date" class="border border-gray-200 rounded-xl p-2" />
-            </div>
-          </div>
+    <div class="chat" id="chat"></div>
 
-          <!-- Estados -->
-          <div>
-            <label class="block text-sm font-medium mb-2">Estados</label>
-            <select id="statesSelect" multiple class="w-full"></select>
-          </div>
+    <div class="row">
+      <input id="q" type="text" placeholder="Pergunte algo… ex: gráfico de doses por mês" />
+      <button id="send">Enviar</button>
+    </div>
+    <div class="toolbar">
+      <label><input type="checkbox" id="stream" checked /> Usar streaming</label>
+      <span class="tiny">Dica: seu backend exige header <code>X-API-Key</code>. Edite no script abaixo.</span>
+    </div>
 
-          <!-- Cidades -->
-          <div>
-            <label class="block text-sm font-medium mb-2">Principais Cidades</label>
-            <select id="citiesSelect" multiple class="w-full"></select>
-          </div>
-
-          <!-- Vacinas -->
-          <div>
-            <label class="block text-sm font-medium mb-2">Tipos de Vacina</label>
-            <select id="vaccinesSelect" multiple class="w-full"></select>
-          </div>
-
-          <!-- Gênero -->
-          <div>
-            <label class="block text-sm font-medium mb-2">Gênero</label>
-            <div class="flex gap-3 mt-2">
-              <label class="flex items-center gap-2 text-sm">
-                <input type="radio" name="gender" value="" checked class="text-green-600"> Todos
-              </label>
-              <label class="flex items-center gap-2 text-sm">
-                <input type="radio" name="gender" value="F" class="text-green-600"> Feminino
-              </label>
-              <label class="flex items-center gap-2 text-sm">
-                <input type="radio" name="gender" value="M" class="text-green-600"> Masculino
-              </label>
-            </div>
-          </div>
-
-          <!-- Idade -->
-          <div>
-            <label class="block text-sm font-medium mb-2">Faixa Etária</label>
-            <div id="ageSlider" class="mt-4"></div>
-            <div class="flex justify-between text-sm text-gray-500 mt-2">
-              <span><span id="ageMin">0</span> anos</span>
-              <span><span id="ageMax">120</span> anos</span>
-            </div>
-          </div>
-
-          <!-- Doses -->
-          <div>
-            <label class="block text-sm font-medium mb-2">Doses</label>
-            <select id="doseSelect" multiple class="w-full">
-              <option value="1">1ª Dose</option>
-              <option value="2">2ª Dose</option>
-              <option value="3">1º Reforço</option>
-              <option value="4">2º Reforço</option>
-            </select>
-            <div class="mt-3 space-y-2">
-              <label class="flex items-center gap-2 text-sm">
-                <input id="completedToggle" type="checkbox" class="text-green-600"> Apenas ciclo completo
-              </label>
-              <label class="flex items-center gap-2 text-sm">
-                <input id="boosterToggle" type="checkbox" class="text-green-600"> Apenas reforços
-              </label>
-            </div>
-          </div>
-
-          <!-- Estabelecimento -->
-          <div>
-            <label class="block text-sm font-medium mb-2">Estabelecimento</label>
-            <input id="estName" type="text" class="w-full border border-gray-200 rounded-xl p-3 focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="Nome contém..." />
-          </div>
-
-          <!-- Botões -->
-          <div class="flex flex-col sm:flex-row gap-3 pt-4">
-            <button id="applyBtn" class="btn-primary flex-1 px-4 py-3 rounded-xl font-medium flex items-center justify-center gap-2">
-              <i class="ti ti-search"></i> Aplicar Filtros
-            </button>
-            <button id="resetBtn" class="btn-secondary px-4 py-3 rounded-xl">
-              <i class="ti ti-refresh"></i>
-            </button>
-          </div>
-          
-          <p class="text-xs text-gray-500 text-center">
-            Os filtros são cumulativos. Clique em "Aplicar" para atualizar os dados.
-          </p>
-        </div>
-      </aside>
-
-      <!-- Conteúdo Principal -->
-      <main class="space-y-6 full-width">
-        <!-- KPIs -->
-        <section id="kpis" class="stats-grid">
-          <div class="metric-card rounded-2xl p-6 skeleton h-32"></div>
-          <div class="metric-card rounded-2xl p-6 skeleton h-32"></div>
-          <div class="metric-card rounded-2xl p-6 skeleton h-32"></div>
-          <div class="metric-card rounded-2xl p-6 skeleton h-32"></div>
-        </section>
-
-        <!-- Banner de Insights -->
-        <section id="insightBanner" class="insight-banner p-6 rounded-2xl">
-          <div class="flex items-start gap-4">
-            <div class="flex items-center justify-center w-12 h-12 bg-green-500 rounded-xl text-white">
-              <i id="insightIcon" class="ti ti-bulb text-xl"></i>
-            </div>
-            <div>
-              <h3 class="font-semibold text-lg mb-2">Principais Insights</h3>
-              <p id="insightText" class="text-gray-700">Carregando análise dos dados...</p>
-            </div>
-          </div>
-        </section>
-
-        <!-- Gráficos Principais -->
-        <section class="charts-grid">
-          <!-- Tendência -->
-          <div class="chart-container rounded-2xl p-6">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <h3 class="text-lg font-semibold">Tendência de Vacinação</h3>
-              <div class="flex items-center gap-4">
-                <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-                  <label class="flex items-center gap-2 text-sm whitespace-nowrap">
-                    <input type="radio" name="granularity" value="day" checked class="text-green-600"> Diário
-                  </label>
-                  <label class="flex items-center gap-2 text-sm whitespace-nowrap">
-                    <input type="radio" name="granularity" value="week" class="text-green-600"> Semanal
-                  </label>
-                  <label class="flex items-center gap-2 text-sm whitespace-nowrap">
-                    <input type="radio" name="granularity" value="month" class="text-green-600"> Mensal
-                  </label>
-                </div>
-                <span id="trendDelta" class="badge-success px-3 py-1 rounded-full text-sm font-medium">—</span>
-              </div>
-            </div>
-            <div class="h-80">
-              <canvas id="trendChart"></canvas>
-            </div>
-          </div>
-
-          <!-- Mix de Vacinas -->
-          <div class="chart-container rounded-2xl p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold">Distribuição por Vacina</h3>
-              <span class="text-sm text-gray-500">Top 10 mais utilizadas</span>
-            </div>
-            <div class="h-80">
-              <canvas id="vaccineChart"></canvas>
-            </div>
-          </div>
-
-          <!-- Faixas Etárias -->
-          <div class="chart-container rounded-2xl p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold">Distribuição por Idade</h3>
-            </div>
-            <div class="h-80">
-              <canvas id="ageChart"></canvas>
-            </div>
-          </div>
-
-          <!-- Performance das Vacinas -->
-         
-        </section>
-
-        <!-- Gráfico Geográfico Grande -->
-        <section class="chart-container rounded-2xl p-6 overflow-hidden">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-            <h3 class="text-lg font-semibold">Distribuição Geográfica</h3>
-            <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-              <label class="flex items-center gap-2 text-sm whitespace-nowrap">
-                <input type="radio" name="geo" value="state" checked class="text-blue-600"> Estados
-              </label>
-              <label class="flex items-center gap-2 text-sm whitespace-nowrap">
-                <input type="radio" name="geo" value="city" class="text-blue-600"> Cidades
-              </label>
-              <label class="flex items-center gap-2 text-sm whitespace-nowrap">
-                <input type="radio" name="geo" value="region" class="text-blue-600"> Regiões
-              </label>
-            </div>
-          </div>
-          <div class="h-96 overflow-hidden">
-            <canvas id="geoChart"></canvas>
-          </div>
-        </section>
-
-        <!-- Análises Demográficas -->
-        <section class="charts-grid">
-          <div class="chart-container rounded-2xl p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold">Análise por Gênero</h3>
-            </div>
-            <div class="h-80">
-              <canvas id="genderChart"></canvas>
-            </div>
-          </div>
-
-          <div class="chart-container rounded-2xl p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold">Evolução Mensal</h3>
-              <span class="text-sm text-gray-500">Últimos 12 meses</span>
-            </div>
-            <div class="h-80">
-              <canvas id="monthlyChart"></canvas>
-            </div>
-          </div>
-        </section>
-
-        <!-- Tabela de Dados -->
-        <section class="chart-container rounded-2xl p-6">
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-3">
-              <h3 class="text-lg font-semibold">Registros Detalhados</h3>
-              <span id="tableCount" class="text-sm text-gray-500">0 registros</span>
-            </div>
-            <div class="flex items-center gap-3">
-              <input id="searchBox" class="border border-gray-200 rounded-xl px-4 py-2 text-sm focus:border-green-500 focus:ring-2 focus:ring-green-500/20" placeholder="Buscar por nome, cidade, lote..." />
-              <button id="exportBtn" class="btn-secondary px-4 py-2 rounded-xl flex items-center gap-2">
-                <i class="ti ti-download"></i> Exportar CSV
-              </button>
-            </div>
-          </div>
-          <div id="table" class="rounded-xl overflow-hidden border border-gray-200"></div>
-        </section>
-
-        <!-- Footer com Informações -->
-        <footer class="flex items-center justify-center gap-6 py-6 text-sm text-gray-500">
-          <span id="freshness">Dados atualizados em —</span>
-          <span id="perf">Tempo de consulta —</span>
-          <span id="health">Status da API —</span>
-        </footer>
-      </main>
+    <div class="hr"></div>
+    <div class="tiny">
+      Exemplo: <em>"Faça um gráfico de barras com total de vacinações por estado."</em>
     </div>
   </div>
 
   <script>
-  // =================== CONFIGURAÇÃO ===================
-  const API_BASE = 'https://slapi-production.up.railway.app';
-  const CONTROLLERS = new Set();
-  
-  function abortAll() { 
-    for (const c of CONTROLLERS) c.abort(); 
-    CONTROLLERS.clear(); 
-  }
-  
-  function api(path, { method='GET', params=null, body=null }={}) {
-    const ctrl = new AbortController(); 
-    CONTROLLERS.add(ctrl);
-    const qs = params ? '?' + new URLSearchParams(params).toString() : '';
-    const opts = { 
-      method, 
-      signal: ctrl.signal, 
-      headers: { 'Content-Type':'application/json' } 
-    };
-    if (body) opts.body = JSON.stringify(body);
-    const p = fetch(`${API_BASE}${path}${qs}`, opts)
-      .finally(() => CONTROLLERS.delete(ctrl));
-    return p;
-  }
+    // >>>>>>>>>> CONFIGURE AQUI <<<<<<<<<<
+    const API_KEY   = "protec";              // sua API key
+    const BASE_URL  = "http://localhost:8000";
+    const ENDPOINT  = `${BASE_URL}/sql-query`;
 
-  // =================== ESTADO ===================
-  const state = {
-    filters: {
-      date_range_preset: 'last_30_days',
-      start_date: null, 
-      end_date: null,
-      vaccine_types: [], 
-      states: [], 
-      cities: [],
-      gender: '', 
-      min_age: 0, 
-      max_age: 120,
-      dose_numbers: [], 
-      only_completed_series: false, 
-      only_boosters: false,
-      establishment_names: []
-    },
-    pagination: { 
-      cursor: null, 
-      limit: 300, 
-      sort_by: 'data_vacina', 
-      sort_order: 'DESC' 
-    },
-    meta: { 
-      vaccines:[], 
-      states:[], 
-      cities:[], 
-      age_min:0, 
-      age_max:120 
+    document.getElementById('endpoint-label').textContent = ENDPOINT;
+
+    const chatEl   = document.getElementById('chat');
+    const inputEl  = document.getElementById('q');
+    const sendBtn  = document.getElementById('send');
+    const streamCb = document.getElementById('stream');
+
+    function addMsg(role, html) {
+      const div = document.createElement('div');
+      div.className = `msg ${role}`;
+      div.innerHTML = html;
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
+      return div;
     }
-  };
 
-  // =================== HELPERS ===================
-  const fmt = new Intl.NumberFormat('pt-BR');
-  
-  function setText(id, v) { 
-    const el = document.getElementById(id); 
-    if (el) el.textContent = v; 
-  }
-  
-  function buildFilterPayload() {
-    const f = state.filters;
-    return {
-      date_range_preset: f.date_range_preset !== 'custom' ? f.date_range_preset : null,
-      start_date: f.date_range_preset === 'custom' ? f.start_date : null,
-      end_date: f.date_range_preset === 'custom' ? f.end_date : null,
-      vaccine_types: f.vaccine_types.length ? f.vaccine_types : null,
-      states: f.states.length ? f.states : null,
-      cities: f.cities.length ? f.cities : null,
-      gender: f.gender || null,
-      min_age: f.min_age, 
-      max_age: f.max_age,
-      dose_numbers: f.dose_numbers.length ? f.dose_numbers.map(Number) : null,
-      only_completed_series: f.only_completed_series,
-      only_boosters: f.only_boosters,
-      establishment_names: f.establishment_names?.length ? f.establishment_names : null
-    };
-  }
-
-  function badgeDelta(el, pct) {
-    el.textContent = `${pct > 0 ? '+' : ''}${isFinite(pct) ? pct.toFixed(1) : '0'}% vs anterior`;
-    el.className = `px-3 py-1 rounded-full text-sm font-medium ${
-      pct > 3 ? 'badge-success' : 
-      pct < -3 ? 'badge-danger' : 'badge-warning'
-    }`;
-  }
-
-  // =================== CONTROLES DE FILTRO ===================
-  let choicesStates, choicesCities, choicesVaccines, choicesDose;
-  let ageSlider;
-  
-  function initFilterControls() {
-    const preset = document.getElementById('presetSelect');
-    const customBox = document.getElementById('customDate');
-    
-    preset.addEventListener('change', () => {
-      state.filters.date_range_preset = preset.value;
-      customBox.classList.toggle('hidden', preset.value !== 'custom');
-    });
-
-    // Multi-selects com Choices.js
-    choicesStates = new Choices('#statesSelect', { 
-      removeItemButton: true, 
-      placeholder: true, 
-      searchResultLimit: 50,
-      placeholderValue: 'Selecione os estados...'
-    });
-    
-    choicesCities = new Choices('#citiesSelect', { 
-      removeItemButton: true, 
-      placeholder: true, 
-      searchResultLimit: 50,
-      placeholderValue: 'Selecione as cidades...'
-    });
-    
-    choicesVaccines = new Choices('#vaccinesSelect', { 
-      removeItemButton: true, 
-      placeholder: true, 
-      searchResultLimit: 50,
-      placeholderValue: 'Selecione as vacinas...'
-    });
-    
-    choicesDose = new Choices('#doseSelect', { 
-      removeItemButton: true, 
-      placeholder: true,
-      placeholderValue: 'Selecione as doses...'
-    });
-
-    // Slider de idade
-    ageSlider = document.getElementById('ageSlider');
-    noUiSlider.create(ageSlider, { 
-      start: [0, 120], 
-      connect: true, 
-      range: { min: 0, max: 120 }, 
-      step: 1 
-    });
-    
-    ageSlider.noUiSlider.on('update', ([a, b]) => { 
-      setText('ageMin', Math.round(a)); 
-      setText('ageMax', Math.round(b)); 
-    });
-
-    // Event listeners
-    document.getElementById('applyBtn').addEventListener('click', applyFilters);
-    document.getElementById('resetBtn').addEventListener('click', resetFilters);
-    document.getElementById('refreshBtn').addEventListener('click', () => runAll(true));
-
-    // Gênero
-    document.querySelectorAll('input[name="gender"]').forEach(r => {
-      r.addEventListener('change', () => state.filters.gender = r.value);
-    });
-
-    // Datas customizadas
-    document.getElementById('startDate').addEventListener('change', e => state.filters.start_date = e.target.value);
-    document.getElementById('endDate').addEventListener('change', e => state.filters.end_date = e.target.value);
-
-    // Toggles de dose
-    document.getElementById('completedToggle').addEventListener('change', e => state.filters.only_completed_series = e.target.checked);
-    document.getElementById('boosterToggle').addEventListener('change', e => state.filters.only_boosters = e.target.checked);
-
-    // Nome do estabelecimento
-    document.getElementById('estName').addEventListener('change', e => {
-      const v = e.target.value?.trim();
-      state.filters.establishment_names = v ? [v] : [];
-    });
-
-    // Nível geográfico
-    document.querySelectorAll('input[name="geo"]').forEach(r => 
-      r.addEventListener('change', () => loadGeoChart(r.value))
-    );
-
-    // Granularidade da tendência
-    document.querySelectorAll('input[name="granularity"]').forEach(r => 
-      r.addEventListener('change', () => loadTrendChart(r.value))
-    );
-
-    // Restaurar filtros salvos
-    const saved = localStorage.getItem('vaccines_filters');
-    if (saved) {
-      try { 
-        Object.assign(state.filters, JSON.parse(saved)); 
-      } catch(_) {}
+    function addChartContainer() {
+      const wrap = document.createElement('div');
+      wrap.className = 'msg bot';
+      const host = document.createElement('div');
+      host.className = 'chart-host';
+      host.id = `chart_${Math.random().toString(36).slice(2)}`;
+      wrap.appendChild(host);
+      chatEl.appendChild(wrap);
+      chatEl.scrollTop = chatEl.scrollHeight;
+      return host.id;
     }
-  }
 
-  // =================== METADADOS ===================
-  async function loadMetadata() {
-    try {
-      const r = await api('/filters/metadata');
-      const meta = await r.json();
-      
-      state.meta.vaccines = meta.available_vaccines.map(v => v.value);
-      state.meta.states = meta.available_states.map(s => s.value);
-      state.meta.cities = meta.available_cities.map(c => c.value);
-      state.meta.age_min = meta.age_range.min; 
-      state.meta.age_max = meta.age_range.max;
+    // ---------- Helpers para converter string "pythonish" -> objeto Plotly ----------
+    function pyLikeToJsObject(pyStr) {
+      if (typeof pyStr !== 'string') return null;
 
-      // Popular os selects
-      choicesVaccines.setChoices(
-        state.meta.vaccines.map(v => ({ value: v, label: v })), 
-        'value', 'label', true
-      );
-      
-      choicesStates.setChoices(
-        state.meta.states.map(v => ({ value: v, label: v })), 
-        'value', 'label', true
-      );
-      
-      choicesCities.setChoices(
-        state.meta.cities.slice(0, 100).map(v => ({ value: v, label: v })), 
-        'value', 'label', true
-      );
+      // remove wrappers do numpy: array([...], dtype=...)
+      pyStr = pyStr.replace(/array\(\s*(\[[\s\S]*?\])\s*(?:,\s*dtype=[^)]+)?\)/g, '$1');
 
-      // Restaurar seleções
-      if (state.filters.vaccine_types?.length) {
-        choicesVaccines.setChoiceByValue(state.filters.vaccine_types);
+      // Python -> JS
+      pyStr = pyStr.replace(/\bNone\b/g, 'null')
+                   .replace(/\bTrue\b/g, 'true')
+                   .replace(/\bFalse\b/g, 'false');
+
+      try {
+        const trimmed = pyStr.trim();
+        const wrapped = (trimmed.startsWith('{') || trimmed.startsWith('[')) ? trimmed : `{${trimmed}}`;
+        // usa Function para avaliar como literal JS
+        return (new Function(`"use strict"; return (${wrapped});`))();
+      } catch (e) {
+        console.warn('Falha ao interpretar string pythonish:', e, pyStr);
+        return null;
       }
-      if (state.filters.states?.length) {
-        choicesStates.setChoiceByValue(state.filters.states);
-      }
-      if (state.filters.cities?.length) {
-        choicesCities.setChoiceByValue(state.filters.cities);
-      }
-      
-      ageSlider.noUiSlider.set([
-        state.filters.min_age ?? 0, 
-        state.filters.max_age ?? 120
-      ]);
-
-      setText('freshness', `Período de dados: ${meta.date_range.min?.slice(0,10)} até ${meta.date_range.max?.slice(0,10)}`);
-      
-    } catch (error) {
-      console.error('Erro ao carregar metadados:', error);
-    }
-  }
-
-  // =================== GRÁFICOS ===================
-  let trendChart, vaccineChart, ageChart, geoChart, performanceChart, genderChart, monthlyChart;
-  let charts = {};
-
-  function cleanupCharts() { 
-    [trendChart, vaccineChart, ageChart, geoChart, performanceChart, genderChart, monthlyChart].forEach(c => { 
-      try { c?.destroy(); } catch(_) {} 
-    }); 
-  }
-
-  function getColorPalette(n) {
-    const colors = [
-      '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', 
-      '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6366f1',
-      '#14b8a6', '#f43f5e', '#a855f7', '#22c55e', '#fb7185'
-    ];
-    const result = [];
-    for (let i = 0; i < n; i++) {
-      result.push(colors[i % colors.length]);
-    }
-    return result;
-  }
-
-  async function loadOverview() {
-    const body = buildFilterPayload();
-    const r = await api('/dashboard/overview', { method: 'POST', body });
-    const data = await r.json();
-
-    // Atualizar KPIs
-    const s = data.summary_stats || {};
-    const kpis = [
-      { 
-        title: 'Total de Vacinas', 
-        value: s.total_vaccinations || 0, 
-        subtitle: `${fmt.format(s.unique_patients || 0)} pessoas vacinadas`,
-        icon: 'ti-vaccine'
-      },
-      { 
-        title: 'Taxa de Completude', 
-        value: `${(s.completion_rate || 0).toFixed(1)}%`, 
-        subtitle: `${fmt.format(s.second_doses || 0)} segundas doses`,
-        icon: 'ti-shield-check'
-      },
-      { 
-        title: 'Doses de Reforço', 
-        value: fmt.format(s.boosters || 0), 
-        subtitle: `Taxa: ${(s.booster_rate || 0).toFixed(1)}%`,
-        icon: 'ti-refresh'
-      },
-      { 
-        title: 'Cobertura Geográfica', 
-        value: `${(s.geographic_coverage_rate || 0).toFixed(1)}%`, 
-        subtitle: `${fmt.format(s.unique_cities || 0)} cidades atendidas`,
-        icon: 'ti-map-pin'
-      }
-    ];
-
-    const kpiRoot = document.getElementById('kpis');
-    kpiRoot.innerHTML = '';
-    
-    for (const k of kpis) {
-      const el = document.createElement('div');
-      el.className = 'metric-card rounded-2xl p-6';
-      el.innerHTML = `
-        <div class="flex items-center justify-between mb-3">
-          <span class="text-sm text-gray-500 font-medium">${k.title}</span>
-          <i class="${k.icon} text-blue-500 text-xl"></i>
-        </div>
-        <div class="text-3xl font-bold text-gray-800 mb-1">
-          ${typeof k.value === 'number' ? fmt.format(k.value) : k.value}
-        </div>
-        <div class="text-sm text-gray-500">${k.subtitle || ''}</div>
-      `;
-      kpiRoot.appendChild(el);
     }
 
-    // Gráfico de faixas etárias
-    updateAgeChart(s);
+    // decodifica objetos {dtype:'u2', bdata:'...'} em arrays JS
+    function decodeNumpyVector(maybe) {
+      if (!maybe || typeof maybe !== 'object') return maybe;
+      if (!('bdata' in maybe) || !('dtype' in maybe)) return maybe;
+      try {
+        const bin = atob(maybe.bdata);
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
 
-    // Gráfico de vacinas
-    const vaccineData = data.charts?.find(c => c.title?.includes('Vaccine Distribution'))?.data || [];
-    updateVaccineChart(vaccineData);
-
-    // Carregar outros gráficos
-    await Promise.all([
-      loadTrendChart(),
-      loadPerformanceChart(),
-      loadGenderChart(),
-      loadMonthlyChart()
-    ]);
-
-    // Geo padrão (estados)
-    await loadGeoChart(document.querySelector('input[name="geo"]:checked').value);
-
-    // Atualizar informações do rodapé
-    setText('perf', `Tempo de consulta: ${data.query_performance?.execution_time_ms ?? '—'} ms`);
-    setText('freshness', `Atualizado em: ${new Date(data.data_freshness?.last_updated || Date.now()).toLocaleString('pt-BR')}`);
-
-    // Gerar insights
-    generateInsights(s, vaccineData);
-  }
-
-  function updateAgeChart(stats) {
-    const ctx = document.getElementById('ageChart');
-    if (ageChart) ageChart.destroy();
-
-    const ageData = {
-      labels: ['0-17 anos', '18-29 anos', '30-49 anos', '50-64 anos', '65+ anos'],
-      datasets: [{
-        label: 'Quantidade',
-        data: [
-          stats.children || 0,
-          stats.young_adults || 0,
-          stats.adults || 0,
-          stats.middle_aged || 0,
-          stats.seniors || 0
-        ],
-        backgroundColor: getColorPalette(5),
-        borderWidth: 0
-      }]
-    };
-
-    ageChart = new Chart(ctx, {
-      type: 'bar',
-      data: ageData,
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
-          y: { beginAtZero: true }
+        const dv = new DataView(bytes.buffer);
+        const out = [];
+        switch (String(maybe.dtype).toLowerCase()) {
+          case 'u2': case 'uint16':
+            for (let i = 0; i < bytes.byteLength; i += 2) out.push(dv.getUint16(i, true)); return out;
+          case 'i2': case 'int16':
+            for (let i = 0; i < bytes.byteLength; i += 2) out.push(dv.getInt16(i, true)); return out;
+          case 'u4': case 'uint32':
+            for (let i = 0; i < bytes.byteLength; i += 4) out.push(dv.getUint32(i, true)); return out;
+          case 'i4': case 'int32':
+            for (let i = 0; i < bytes.byteLength; i += 4) out.push(dv.getInt32(i, true)); return out;
+          case 'f4': case 'float32':
+            for (let i = 0; i < bytes.byteLength; i += 4) out.push(dv.getFloat32(i, true)); return out;
+          case 'f8': case 'float64':
+            for (let i = 0; i < bytes.byteLength; i += 8) out.push(dv.getFloat64(i, true)); return out;
+          default:
+            return maybe;
         }
+      } catch (e) {
+        console.warn('Falha ao decodificar numpy vector:', e, maybe);
+        return maybe;
       }
-    });
-  }
-
-  function updateVaccineChart(vaccineData) {
-    const ctx = document.getElementById('vaccineChart');
-    if (vaccineChart) vaccineChart.destroy();
-
-    vaccineChart = new Chart(ctx, {
-      type: 'doughnut',
-      data: {
-        labels: vaccineData.map(d => d.vaccine),
-        datasets: [{
-          data: vaccineData.map(d => d.count),
-          backgroundColor: getColorPalette(vaccineData.length),
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { 
-            position: 'right',
-            labels: {
-              usePointStyle: true,
-              padding: 20
-            }
-          }
-        }
-      }
-    });
-  }
-
-  async function loadTrendChart(granularity = 'day') {
-    const body = buildFilterPayload();
-    const r = await api(`/analytics/time-series?granularity=${granularity}`, { method: 'POST', body });
-    const resp = await r.json();
-    const data = resp.data || [];
-
-    const ctx = document.getElementById('trendChart');
-    if (trendChart) trendChart.destroy();
-
-    // Format labels based on granularity
-    const formatLabel = (dateStr, gran) => {
-      const date = new Date(dateStr);
-      switch (gran) {
-        case 'day': return date.toLocaleDateString('pt-BR');
-        case 'week': return `Semana de ${date.toLocaleDateString('pt-BR')}`;
-        case 'month': return date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
-        case 'quarter': return `Q${Math.ceil((date.getMonth() + 1) / 3)}/${date.getFullYear()}`;
-        case 'year': return date.getFullYear().toString();
-        default: return date.toLocaleDateString('pt-BR');
-      }
-    };
-
-    trendChart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: data.map(d => formatLabel(d.period, granularity)),
-        datasets: [{
-          label: `Vacinações ${granularity === 'day' ? 'Diárias' : granularity === 'week' ? 'Semanais' : 'Mensais'}`,
-          data: data.map(d => d.total_vaccinations || 0),
-          borderColor: '#3b82f6',
-          backgroundColor: 'rgba(59, 130, 246, 0.1)',
-          fill: true,
-          tension: 0.4,
-          borderWidth: 3
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
-          y: { beginAtZero: true }
-        },
-        interaction: { intersect: false, mode: 'nearest' }
-      }
-    });
-
-    // Calcular delta para o badge
-    if (data.length >= 2) {
-      const half = Math.floor(data.length / 2);
-      const prev = data.slice(0, half).reduce((a, b) => a + (b.total_vaccinations || 0), 0);
-      const curr = data.slice(half).reduce((a, b) => a + (b.total_vaccinations || 0), 0);
-      const pct = (curr - prev) / Math.max(prev, 1) * 100;
-      badgeDelta(document.getElementById('trendDelta'), pct);
     }
-  }
 
-  async function loadGeoChart(level = 'state') {
-    const body = buildFilterPayload();
-    const r = await api(`/analytics/geographic-distribution?level=${level}&top_n=${level === 'city' ? 20 : 27}`, { 
-      method: 'POST', body 
-    });
-    const resp = await r.json();
-    const data = resp.data || [];
+    function normalizePlotlyFigure(pf) {
+      if (!pf || !pf.figure) return pf;
+      const fig = pf.figure;
 
-    const ctx = document.getElementById('geoChart');
-    if (geoChart) geoChart.destroy();
-
-    geoChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: data.map(d => d.name || d.code || d.region),
-        datasets: [{
-          label: 'Vacinações',
-          data: data.map(d => d.total_vaccinations || 0),
-          backgroundColor: getColorPalette(data.length),
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        indexAxis: level === 'city' ? 'y' : 'x',
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
-          y: { beginAtZero: true }
-        }
+      if (Array.isArray(fig.data)) {
+        fig.data = fig.data.map(tr => {
+          const t = {...tr};
+          if (!Array.isArray(t.x)) t.x = decodeNumpyVector(t.x);
+          if (!Array.isArray(t.y)) t.y = decodeNumpyVector(t.y);
+          return t;
+        });
       }
-    });
-  }
+      return pf;
+    }
 
-  async function loadPerformanceChart() {
-    const body = buildFilterPayload();
-    const r = await api('/analytics/vaccine-performance', { method: 'POST', body });
-    const data = await r.json();
-    const vaccines = data.vaccine_performance?.slice(0, 10) || [];
+    // -------------------- fluxo de envio --------------------
+    async function sendMessage() {
+      const text = inputEl.value.trim();
+      if (!text) return;
+      addMsg('user', escapeHtml(text));
+      inputEl.value = '';
+      sendBtn.disabled = true;
 
-    const ctx = document.getElementById('performanceChart');
-    if (performanceChart) performanceChart.destroy();
+      const body = {
+        query: text,
+        session_id: "demo",
+        user_id: "demo",
+        model_id: "openai:gpt-4o-mini",
+        stream: streamCb.checked,
+        debug_mode: true
+      };
 
-    performanceChart = new Chart(ctx, {
-      type: 'scatter',
-      data: {
-        datasets: [{
-          label: 'Taxa de Conclusão vs Doses por Pessoa',
-          data: vaccines.map(v => ({
-            x: v.doses_per_patient || 0,
-            y: v.completion_rate || 0,
-            vaccine: v.vaccine_code
-          })),
-          backgroundColor: 'rgba(59, 130, 246, 0.6)',
-          borderColor: '#3b82f6',
-          borderWidth: 2,
-          pointRadius: 8
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          tooltip: {
-            callbacks: {
-              label: (context) => {
-                const point = context.parsed;
-                const vaccine = vaccines[context.dataIndex];
-                return [
-                  `Vacina: ${vaccine.vaccine_code}`,
-                  `Doses/Pessoa: ${point.x.toFixed(2)}`,
-                  `Taxa Conclusão: ${point.y.toFixed(1)}%`,
-                  `Total Doses: ${vaccine.total_doses?.toLocaleString('pt-BR')}`
-                ];
+      try {
+        if (streamCb.checked) {
+          await callStreaming(body);
+        } else {
+          await callNonStream(body);
+        }
+      } catch (err) {
+        addMsg('bot', `<span class="muted">Erro: ${escapeHtml(String(err))}</span>`);
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+
+    async function callNonStream(payload) {
+      const resp = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': API_KEY,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok) {
+        const t = await resp.text();
+        throw new Error(`HTTP ${resp.status}: ${t}`);
+      }
+      const data = await resp.json();
+      handleMessageObject(data);
+    }
+
+    async function callStreaming(payload) {
+      const resp = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'text/event-stream',
+          'X-API-Key': API_KEY,
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!resp.ok || !resp.body) {
+        const t = await resp.text();
+        throw new Error(`HTTP ${resp.status}: ${t}`);
+      }
+
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder('utf-8');
+      let buffer = '';
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        // Processar eventos SSE: separados por \n\n
+        let sepIndex;
+        while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
+          const rawEvent = buffer.slice(0, sepIndex);
+          buffer = buffer.slice(sepIndex + 2);
+
+          // Cada linha de um evento pode começar com "data: ..."
+          const lines = rawEvent.split('\n');
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (trimmed.startsWith('data:')) {
+              const jsonStr = trimmed.slice(5).trim();
+              if (jsonStr) {
+                try {
+                  const obj = JSON.parse(jsonStr);
+                  handleMessageObject(obj);
+                } catch (e) {
+                  // ignora pedaços incompletos/concatenados
+                }
               }
             }
           }
-        },
-        scales: {
-          x: {
-            title: {
-              display: true,
-              text: 'Doses por Pessoa'
-            }
-          },
-          y: {
-            title: {
-              display: true,
-              text: 'Taxa de Conclusão (%)'
-            }
-          }
         }
       }
-    });
-  }
+    }
 
-  async function loadGenderChart() {
-    const body = buildFilterPayload();
-    const r = await api('/analytics/demographic-insights', { 
-      method: 'POST', 
-      body: { ...body, breakdown_by: 'gender_only' } 
-    });
-    const data = await r.json();
-    const genderData = data.gender_distribution || [];
+    // -------------------- handler de mensagens --------------------
+    function handleMessageObject(obj) {
+      // Caso 1: já vem com chart JSON (ToolResult do servidor)
+      if (obj?.chart && obj.chart.type === 'plotly_figure' && obj.chart.figure) {
+        const id = addChartContainer();
+        const fig = obj.chart.figure;
+        Plotly.newPlot(id, fig.data, fig.layout, { responsive: true });
+        if (obj.chart.meta?.title) addMsg('bot', `<span class="muted">Gráfico: ${escapeHtml(obj.chart.meta.title)}</span>`);
+        return;
+      }
 
-    const ctx = document.getElementById('genderChart');
-    if (genderChart) genderChart.destroy();
+      if (obj?.chart && obj.chart.type === 'chart_error') {
+        addMsg('bot', `<strong>Erro no gráfico:</strong> ${escapeHtml(obj.chart.message || 'Desconhecido')}`);
+        return;
+      }
 
-    genderChart = new Chart(ctx, {
-      type: 'pie',
-      data: {
-        labels: genderData.map(d => d.gender === 'F' ? 'Feminino' : 'Masculino'),
-        datasets: [{
-          data: genderData.map(d => d.count),
-          backgroundColor: ['#ec4899', '#3b82f6'],
-          borderWidth: 0
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { 
-            position: 'bottom',
-            labels: {
-              usePointStyle: true,
-              padding: 20
-            }
-          }
+      // Caso 2: seu caso atual — RunCompleted com content string “pythonish”
+      if (obj?.is_chart && obj?.event === 'RunCompleted' && typeof obj?.content === 'string') {
+        const parsed = pyLikeToJsObject(obj.content);
+        if (parsed && parsed.type === 'plotly_figure' && parsed.figure) {
+          const norm = normalizePlotlyFigure(parsed);
+          const id = addChartContainer();
+          Plotly.newPlot(id, norm.figure.data, norm.figure.layout, { responsive: true });
+          if (norm.meta?.title) addMsg('bot', `<span class="muted">Gráfico: ${escapeHtml(norm.meta.title)}</span>`);
+          return;
         }
       }
-    });
-  }
 
-  async function loadMonthlyChart() {
-    const body = buildFilterPayload();
-    const r = await api('/analytics/time-series?granularity=month', { method: 'POST', body });
-    const ts = await r.json();
-    const data = ts.data || [];
+      // Mensagens textuais
+      if (typeof obj?.content === 'string') {
+        const trimmed = obj.content.trim();
+        if (trimmed) addMsg('bot', escapeHtml(trimmed));
+        return;
+      }
 
-    const ctx = document.getElementById('monthlyChart');
-    if (monthlyChart) monthlyChart.destroy();
-
-    monthlyChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: data.map(d => new Date(d.period).toLocaleDateString('pt-BR', { 
-          month: 'short', 
-          year: 'numeric' 
-        })),
-        datasets: [{
-          label: 'Vacinações Mensais',
-          data: data.map(d => d.total_vaccinations || 0),
-          backgroundColor: '#10b981',
-          borderRadius: 6,
-          borderSkipped: false
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false }
-        },
-        scales: {
-          y: { beginAtZero: true }
+      // Não-stream: completed
+      if (obj?.status === 'completed') {
+        if (obj.is_chart && obj.chart && obj.chart.type === 'plotly_figure') {
+          const id = addChartContainer();
+          const fig = obj.chart.figure;
+          Plotly.newPlot(id, fig.data, fig.layout, { responsive: true });
+          return;
+        }
+        if (obj.reasoning) {
+          addMsg('bot', escapeHtml(String(obj.reasoning)));
+          return;
         }
       }
-    });
-  }
-
-  function generateInsights(stats, vaccineData) {
-    const totalVacc = stats.total_vaccinations || 0;
-    const uniquePatients = stats.unique_patients || 0;
-    const completionRate = stats.completion_rate || 0;
-    const boosterRate = stats.booster_rate || 0;
-    const topVaccine = vaccineData[0]?.vaccine || '—';
-
-    let insight = `Foram aplicadas <span class="story-highlight">${fmt.format(totalVacc)} doses</span> `;
-    insight += `em <span class="story-highlight">${fmt.format(uniquePatients)} pessoas</span>. `;
-    
-    if (completionRate > 70) {
-      insight += `A <span class="story-highlight">taxa de completude de ${completionRate.toFixed(1)}%</span> `;
-      insight += `demonstra boa adesão ao esquema vacinal. `;
-    } else {
-      insight += `A taxa de completude de ${completionRate.toFixed(1)}% indica oportunidades `;
-      insight += `de melhoria na adesão. `;
     }
 
-    insight += `A vacina mais utilizada é <span class="story-highlight">${topVaccine}</span>. `;
-
-    if (boosterRate > 20) {
-      insight += `Com ${boosterRate.toFixed(1)}% de taxa de reforço, a população está `;
-      insight += `aderindo bem às doses adicionais.`;
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
     }
 
-    document.getElementById('insightText').innerHTML = insight;
-  }
-
-  // =================== TABELA ===================
-  let table;
-  
-  async function initTable() {
-    table = new Tabulator('#table', {
-      layout: "fitDataStretch",
-      height: 400,
-      movableColumns: true,
-      pagination: false,
-      placeholder: "Carregando dados...",
-      columns: [
-        { title: "Data", field: "data_vacina", width: 120 },
-        { title: "Paciente", field: "codigo_paciente", width: 160 },
-        { title: "Vacina", field: "sigla_vacina", width: 100 },
-        { title: "Dose", field: "codigo_dose_vacina", width: 80 },
-        { title: "Idade", field: "numero_idade_paciente", width: 80 },
-        { title: "Gênero", field: "tipo_sexo_paciente", width: 80 },
-        { title: "Cidade", field: "nome_municipio_paciente", width: 160 },
-        { title: "UF", field: "sigla_uf_paciente", width: 70 },
-        { title: "Estabelecimento", field: "nome_razao_social_estabelecimento", width: 250 },
-        { title: "Lote", field: "codigo_lote_vacina", width: 120 }
-      ]
+    // UI
+    sendBtn.addEventListener('click', sendMessage);
+    inputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendMessage();
     });
 
-    // Load initial data
-    await loadTableData();
-
-    // Busca
-    document.getElementById('searchBox').addEventListener('input', async (e) => {
-      const searchTerm = e.target.value.trim();
-      if (searchTerm.length >= 2 || searchTerm.length === 0) {
-        await advancedSearch(searchTerm);
-      }
-    });
-
-    // Exportar
-    document.getElementById('exportBtn').addEventListener('click', async () => {
-      try {
-        const body = buildFilterPayload();
-        const r = await api('/search/advanced', { 
-          method: 'POST', 
-          body,
-          params: { export_format: 'csv' }
-        });
-        
-        if (!r.ok) {
-          throw new Error(`HTTP ${r.status}: ${r.statusText}`);
-        }
-        
-        const json = await r.json();
-        const rows = json.data || [];
-        
-        if (!rows.length) { 
-          alert('Nenhum registro para exportar'); 
-          return; 
-        }
-        
-        const headers = Object.keys(rows[0]);
-        const csv = [headers.join(',')]
-          .concat(rows.map(o => headers.map(h => JSON.stringify(o[h] ?? '')).join(',')))
-          .join('\n');
-          
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const a = document.createElement('a'); 
-        a.href = URL.createObjectURL(blob); 
-        a.download = 'vacinacao_export.csv'; 
-        a.click(); 
-        URL.revokeObjectURL(a.href);
-        
-      } catch (error) {
-        console.error('Export error:', error);
-        alert('Erro ao exportar dados: ' + error.message);
-      }
-    });
-  }
-
-  async function loadTableData() {
-    try {
-      table.setData([]); // Clear existing data
-      setText('tableCount', 'Carregando...');
-      
-      const body = buildFilterPayload();
-      console.log('Loading table data with filters:', body);
-      
-      const r = await api('/search/advanced', { 
-        method: 'POST', 
-        body
-      });
-      
-      if (!r.ok) {
-        throw new Error(`HTTP ${r.status}: ${r.statusText}`);
-      }
-      
-      const json = await r.json();
-      console.log('Table data response:', json);
-      
-      const data = json.data || [];
-      
-      // Remove row_id field from display data
-      const cleanData = data.map(row => {
-        const { row_id, ...cleanRow } = row;
-        return cleanRow;
-      });
-      
-      table.setData(cleanData);
-      setText('tableCount', `${cleanData.length} registros`);
-      
-      if (cleanData.length === 0) {
-        table.setPlaceholder("Nenhum registro encontrado com os filtros aplicados");
-      }
-      
-      state.pagination.cursor = json.pagination?.next_cursor;
-      
-    } catch (error) {
-      console.error('Error loading table data:', error);
-      setText('tableCount', 'Erro ao carregar');
-      table.setPlaceholder("Erro ao carregar dados: " + error.message);
-    }
-  }
-
-  async function advancedSearch(searchTerms) {
-    try {
-      setText('tableCount', 'Buscando...');
-      
-      const body = buildFilterPayload();
-      const params = searchTerms ? { search_terms: searchTerms } : {};
-      
-      console.log('Advanced search with terms:', searchTerms, 'filters:', body);
-      
-      const r = await api('/search/advanced', { 
-        method: 'POST', 
-        body,
-        params
-      });
-      
-      if (!r.ok) {
-        throw new Error(`HTTP ${r.status}: ${r.statusText}`);
-      }
-      
-      const json = await r.json();
-      console.log('Search response:', json);
-      
-      const data = json.data || [];
-      
-      // Remove row_id field from display data
-      const cleanData = data.map(row => {
-        const { row_id, ...cleanRow } = row;
-        return cleanRow;
-      });
-      
-      table.setData(cleanData);
-      setText('tableCount', `${cleanData.length} registros encontrados`);
-      
-      if (cleanData.length === 0) {
-        table.setPlaceholder(searchTerms ? 
-          `Nenhum registro encontrado para "${searchTerms}"` : 
-          "Nenhum registro encontrado com os filtros aplicados"
-        );
-      }
-      
-    } catch (error) {
-      console.error('Search error:', error);
-      setText('tableCount', 'Erro na busca');
-      table.setPlaceholder("Erro na busca: " + error.message);
-    }
-  }
-
-  // =================== APLICAR FILTROS ===================
-  async function applyFilters() {
-    // Coletar valores da UI
-    state.filters.vaccine_types = choicesVaccines.getValue(true);
-    state.filters.states = choicesStates.getValue(true);
-    state.filters.cities = choicesCities.getValue(true);
-    const dose = choicesDose.getValue(true);
-    state.filters.dose_numbers = Array.isArray(dose) ? dose : (dose ? [dose] : []);
-    const [a, b] = ageSlider.noUiSlider.get();
-    state.filters.min_age = Math.round(a);
-    state.filters.max_age = Math.round(b);
-
-    // Salvar no localStorage
-    localStorage.setItem('vaccines_filters', JSON.stringify(state.filters));
-
-    // Executar
-    await runAll();
-  }
-
-  function resetFilters() {
-    localStorage.removeItem('vaccines_filters');
-    location.reload();
-  }
-
-  async function runAll(force = false) {
-    try {
-      abortAll();
-      cleanupCharts();
-      
-      // Mostrar skeletons
-      document.getElementById('kpis').querySelectorAll('.metric-card').forEach(k => {
-        k.classList.add('skeleton');
-      });
-
-      await Promise.all([
-        loadOverview(),
-        checkHealth()
-      ]);
-
-      // Inicializar/atualizar tabela
-      if (!table) {
-        await initTable();
-      } else {
-        await loadTableData();
-      }
-
-    } catch (e) {
-      console.error('Erro ao executar:', e);
-    }
-  }
-
-  async function checkHealth() {
-    try {
-      const r = await api('/health');
-      const h = await r.json();
-      setText('health', `API: ${h.status} (${h.database?.response_time_ms || '—'} ms)`);
-    } catch (e) {
-      setText('health', 'API: offline');
-    }
-  }
-
-  // =================== INICIALIZAÇÃO ===================
-  (async function() {
-    initFilterControls();
-    await loadMetadata();
-    await runAll();
-    
-    // Atualizar timestamp
-    setText('lastUpdate', `Última atualização: ${new Date().toLocaleString('pt-BR')}`);
-  })();
+    // Mensagem de boas-vindas
+    addMsg('bot', 'Olá! Manda uma pergunta. Se pedir <em>gráfico</em>, eu tento desenhar com Plotly 🙂');
   </script>
 </body>
 </html>

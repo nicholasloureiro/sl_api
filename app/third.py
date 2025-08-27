@@ -155,7 +155,7 @@ class ClickHouseClient:
 _CLICKHOUSE_CLIENT_SINGLETON = ClickHouseClient()
 
 
-@tool(show_result=True)
+@tool(show_result=True, stop_after_tool_call=True)
 def render_plotly_chart(
     sql: str,
     kind: str = "bar",
@@ -164,16 +164,6 @@ def render_plotly_chart(
     color: Optional[str] = None,
     title: Optional[str] = None,
 ):
-    """
-    Executa a SQL no ClickHouse, monta um gráfico Plotly e RETORNA JSON:
-    {
-      "type": "plotly_figure",
-      "schema": "plotly",
-      "kind": "...",
-      "meta": {...},
-      "figure": {"data":[...], "layout":{...}}
-    }
-    """
     try:
         df: pd.DataFrame = _CLICKHOUSE_CLIENT_SINGLETON.client.query_df(sql.rstrip(";"))
         if df.empty:
@@ -196,7 +186,8 @@ def render_plotly_chart(
         else:
             fig = px.bar(df, x=x, y=y, color=color, title=title)
 
-        figure_dict = fig.to_dict()  # {'data': [...], 'layout': {...}}
+        # JSON 100% serializável
+        figure_json = fig.to_plotly_json()
 
         return {
             "type": "plotly_figure",
@@ -205,8 +196,9 @@ def render_plotly_chart(
             "meta": {
                 "x": x, "y": y, "color": color, "title": title,
                 "row_count": int(len(df)),
+                "sql": sql.rstrip(";"),
             },
-            "figure": figure_dict
+            "figure": figure_json,
         }
 
     except Exception as e:
@@ -663,6 +655,18 @@ async def execute_sql_analytics_query(
                             }
                             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
                             continue
+                    if isinstance(content, str) and content.strip().startswith("{'type':"):
+                        try:
+                            parsed = ast.literal_eval(content)
+                            if isinstance(parsed, dict) and parsed.get("type") in {"plotly_figure", "chart_error"}:
+                                payload = {"status":"streaming","event":event,"timestamp":datetime.now().isoformat(),
+                                        "is_chart":True,"chart":parsed}
+                                yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                                continue
+                        except Exception:
+                            pass 
+                    if is_chart and event in ("RunResponseContent", "RunResult"):
+                        continue
 
                         # fallback para outros tipos de retorno de tool
                         payload = {

@@ -1,0 +1,286 @@
+{
+    "table_name": "vacinas.events",
+    "table_description": "Contains detailed vaccination records including patient demographics, vaccination details, establishment information, and metadata.",
+    "table_columns": [
+        {
+            "name": "descricao_natureza_estabelecimento",
+            "type": "String",
+            "description": "Description of the establishment's nature."
+        },
+        {
+            "name": "codigo_via_administracao",
+            "type": "String",
+            "description": "Code representing the route of vaccine administration."
+        },
+        {
+            "name": "nome_pais_paciente",
+            "type": "String",
+            "description": "Name of the patient's country."
+        },
+        {
+            "name": "codigo_origem_registro",
+            "type": "Nullable(String)",
+            "description": "Code representing the origin of the record."
+        },
+        {
+            "name": "codigo_pais_paciente",
+            "type": "String",
+            "description": "Code for the patient's country."
+        },
+        {
+            "name": "nome_raca_cor_paciente",
+            "type": "String",
+            "description": "Race or color of the patient."
+        },
+        {
+            "name": "sigla_vacina",
+            "type": "String",
+            "description": "Abbreviation of the vaccine."
+        },
+        {
+            "name": "codigo_vacina_fabricante",
+            "type": "Nullable(String)",
+            "description": "Manufacturer code of the vaccine."
+        },
+        {
+            "name": "data_vacina",
+            "type": "Date",
+            "description": "Date when the vaccine was administered."
+        },
+        {
+            "name": "codigo_condicao_maternal",
+            "type": "Nullable(String)",
+            "description": "Code representing maternal condition."
+        },
+        {
+            "name": "nome_razao_social_estabelecimento",
+            "type": "String",
+            "description": "Official name of the establishment."
+        },
+        {
+            "name": "sigla_uf_estabelecimento",
+            "type": "String",
+            "description": "State abbreviation of the establishment."
+        },
+        {
+            "name": "nome_municipio_estabelecimento",
+            "type": "String",
+            "description": "Municipality name of the establishment."
+        },
+        {
+            "name": "codigo_sistema_origem",
+            "type": "String",
+            "description": "Code for the origin system."
+        },
+        {
+            "name": "status_documento",
+            "type": "String",
+            "description": "Document status."
+        },
+        {
+            "name": "descricao_tipo_estabelecimento",
+            "type": "String",
+            "description": "Description of the type of establishment."
+        },
+        {
+            "name": "codigo_documento",
+            "type": "String",
+            "description": "Document code."
+        },
+        {
+            "name": "codigo_municipio_estabelecimento",
+            "type": "String",
+            "description": "Code of the establishment's municipality."
+        },
+        {
+            "name": "descricao_estrategia_vacinacao",
+            "type": "String",
+            "description": "Description of the vaccination strategy."
+        },
+        {
+            "name": "data_deletado_rnds",
+            "type": "Nullable(Date)",
+            "description": "Date the record was deleted in RNDS."
+        },
+        {
+            "name": "nome_uf_paciente",
+            "type": "String",
+            "description": "Full state name of the patient."
+        },
+        {
+            "name": "numero_cep_paciente",
+            "type": "String",
+            "description": "ZIP code of the patient."
+        },
+        {
+            "name": "codigo_etnia_indigena_paciente",
+            "type": "Nullable(String)",
+            "description": "Code of indigenous ethnicity of the patient."
+        },
+        {
+            "name": "codigo_vacina_categoria_atendimento",
+            "type": "Nullable(String)",
+            "description": "Code of the vaccine's service category."
+        },
+        {
+            "name": "descricao_local_aplicacao",
+            "type": "String",
+            "description": "Description of the location where vaccine was applied."
+        },
+        {
+            "name": "numero_idade_paciente",
+            "type": "UInt16",
+            "description": "Age of the patient in years."
+        },
+        {
+            "name": "codigo_lote_vacina",
+            "type": "String",
+            "description": "Vaccine lot code."
+        },
+        {
+            "name": "codigo_cnes_estabelecimento",
+            "type": "String",
+            "description": "CNES code of the establishment."
+        },
+        {
+            "name": "descricao_vacina_fabricante",
+            "type": "String",
+            "description": "Description of the vaccine manufacturer."
+        },
+        {
+            "name": "codigo_tipo_estabelecimento",
+            "type": "String",
+            "description": "Type code of the establishment."
+        },
+        {
+            "name": "codigo_natureza_estabelecimento",
+            "type": "String",
+            "description": "Nature code of the establishment."
+        },
+        {
+            "name": "codigo_raca_cor_paciente",
+            "type": "String",
+            "description": "Code representing the patient's race/color."
+        },
+        {
+            "name": "codigo_vacina_grupo_atendimento",
+            "type": "Nullable(String)",
+            "description": "Code of the vaccine group served."
+        },
+        {
+            "name": "codigo_paciente",
+            "type": "String",
+            "description": "Unique identifier of the patient."
+        },
+        {
+            "name": "descricao_sistema_origem",
+            "type": "String",
+            "description": "Description of the origin system."
+        },
+        {
+            "name": "codigo_municipio_paciente",
+            "type": "String",
+            "description": "Code of the patient's municipality."
+        },
+        {
+            "name": "nome_municipio_paciente",
+            "type": "String",
+            "description": "Name of the patient's municipality."
+        },
+        {
+            "name": "nome_fantasia_estalecimento",
+            "type": "String",
+            "description": "Trade name of the establishment."
+        },
+        {
+            "name": "descricao_condicao_maternal",
+            "type": "Nullable(String)",
+            "description": "Description of the maternal condition."
+        },
+        {
+            "name": "descricao_vacina_grupo_atendimento",
+            "type": "Nullable(String)",
+            "description": "Description of the vaccine service group."
+        },
+        {
+            "name": "codigo_local_aplicacao",
+            "type": "String",
+            "description": "Code of the application location."
+        },
+        {
+            "name": "sigla_uf_paciente",
+            "type": "String",
+            "description": "State abbreviation of the patient."
+        },
+        {
+            "name": "nome_uf_estabelecimento",
+            "type": "String",
+            "description": "Full name of the establishment's state."
+        },
+        {
+            "name": "codigo_vacina",
+            "type": "String",
+            "description": "Vaccine code."
+        },
+        {
+            "name": "descricao_via_administracao",
+            "type": "String",
+            "description": "Description of the administration route."
+        },
+        {
+            "name": "codigo_estrategia_vacinacao",
+            "type": "String",
+            "description": "Vaccination strategy code."
+        },
+        {
+            "name": "descricao_vacina",
+            "type": "String",
+            "description": "Description of the vaccine."
+        },
+        {
+            "name": "descricao_origem_registro",
+            "type": "Nullable(String)",
+            "description": "Description of the record origin."
+        },
+        {
+            "name": "data_entrada_rnds",
+            "type": "Nullable(Date)",
+            "description": "Date the record entered RNDS."
+        },
+        {
+            "name": "descricao_vacina_categoria_atendimento",
+            "type": "Nullable(String)",
+            "description": "Description of the vaccine category of service."
+        },
+        {
+            "name": "nome_etnia_indigena_paciente",
+            "type": "Nullable(String)",
+            "description": "Name of the indigenous ethnicity of the patient."
+        },
+        {
+            "name": "tipo_sexo_paciente",
+            "type": "String",
+            "description": "Gender of the patient (M/F)."
+        },
+        {
+            "name": "descricao_nacionalidade_paciente",
+            "type": "String",
+            "description": "Description of the patient's nationality."
+        },
+        {
+            "name": "codigo_troca_documento",
+            "type": "Nullable(String)",
+            "description": "Document exchange code."
+        },
+        {
+            "name": "codigo_dose_vacina",
+            "type": "String",
+            "description": "Dose code of the vaccine."
+        },
+        {
+            "name": "descricao_dose_vacina",
+            "type": "String",
+            "description": "Description of the vaccine dose."
+        }
+    ]
+}
