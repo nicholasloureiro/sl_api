@@ -163,26 +163,26 @@ def render_plotly_chart(
     y: Optional[str] = None,
     color: Optional[str] = None,
     title: Optional[str] = None,
-    filename: Optional[str] = None,
 ):
     """
-    Execute a SQL query on ClickHouse, build a Plotly chart, and RETURN the raw HTML string.
-
-    The agent should pick sensible defaults if x/y aren't provided (e.g., the first 2 columns).
+    Executa a SQL no ClickHouse, monta um gráfico Plotly e RETORNA JSON:
+    {
+      "type": "plotly_figure",
+      "schema": "plotly",
+      "kind": "...",
+      "meta": {...},
+      "figure": {"data":[...], "layout":{...}}
+    }
     """
     try:
         df: pd.DataFrame = _CLICKHOUSE_CLIENT_SINGLETON.client.query_df(sql.rstrip(";"))
         if df.empty:
-            return "A consulta SQL retornou 0 linhas—não há dados para gerar gráfico."
+            return {"type": "chart_error", "message": "A consulta SQL retornou 0 linhas—não há dados para gerar gráfico."}
 
-        # Auto-pick columns if not provided
         cols = list(df.columns)
-        if x is None and len(cols) >= 1:
-            x = cols[0]
-        if y is None and len(cols) >= 2:
-            y = cols[1]
+        if x is None and len(cols) >= 1: x = cols[0]
+        if y is None and len(cols) >= 2: y = cols[1]
 
-        # Build figure
         if kind == "line":
             fig = px.line(df, x=x, y=y, color=color, title=title)
         elif kind == "scatter":
@@ -196,14 +196,21 @@ def render_plotly_chart(
         else:
             fig = px.bar(df, x=x, y=y, color=color, title=title)
 
-        # ⬇️ Return RAW HTML (no file write needed)
-        # full_html=False returns only the <div> + script (easier to embed)
-        html_str = fig.to_html(include_plotlyjs=False, full_html=False)
-    
-        return {"type": "chart_html", "kind": kind, "html": html_str}
+        figure_dict = fig.to_dict()  # {'data': [...], 'layout': {...}}
+
+        return {
+            "type": "plotly_figure",
+            "schema": "plotly",
+            "kind": kind,
+            "meta": {
+                "x": x, "y": y, "color": color, "title": title,
+                "row_count": int(len(df)),
+            },
+            "figure": figure_dict
+        }
 
     except Exception as e:
-        return f"Erro ao gerar gráfico: {str(e)}"
+        return {"type": "chart_error", "message": f"Erro ao gerar gráfico: {str(e)}"}
 
 
 @tool(show_result=False)
@@ -587,29 +594,27 @@ async def execute_sql_analytics_query(
 
                     # === Only pass through tool HTML; drop markdown chatter ===
                     if event == "ToolResult":
-                        # Case 1: our structured return
-                        if isinstance(content, dict) and content.get("type") == "chart_html":
+                        if isinstance(content, dict) and content.get("type") in {"plotly_figure", "chart_error"}:
                             payload = {
                                 "status": "streaming",
                                 "event": event,
                                 "timestamp": datetime.now().isoformat(),
                                 "is_chart": True,
-                                "html": content["html"],
+                                "chart": content,  # -> contém "figure": {data, layout}
                             }
                             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
                             continue
 
-                        # Case 2: fallback if tool returns a raw string of HTML
-                        if isinstance(content, str) and content.lstrip().startswith("<"):
-                            payload = {
-                                "status": "streaming",
-                                "event": event,
-                                "timestamp": datetime.now().isoformat(),
-                                "is_chart": True,
-                                "html": content,
-                            }
-                            yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
-                            continue
+                        # fallback para outros tipos de retorno de tool
+                        payload = {
+                            "status": "streaming",
+                            "event": event,
+                            "timestamp": datetime.now().isoformat(),
+                            "is_chart": is_chart,
+                            "content": content,
+                        }
+                        yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                        continue
 
                     # For chart runs, ignore the model’s markdown tokens
                     if is_chart and event == "RunResponseContent":
@@ -648,7 +653,20 @@ async def execute_sql_analytics_query(
             # Non-stream branch:
             run = agent.run(request.query)
             result = getattr(run, "content", str(run))
-            is_html = isinstance(result, str) and result.lstrip().startswith("<")
+
+            is_chart_result = False
+            chart_obj = None
+            reasoning_text = None
+
+            if isinstance(result, dict) and result.get("type") in {"plotly_figure", "chart_error"}:
+                is_chart_result = True
+                chart_obj = result
+            elif isinstance(result, str) and result.lstrip().startswith("<"):
+                # fallback antigo (não deve ocorrer mais)
+                is_chart_result = True
+                chart_obj = {"type": "raw_html_fallback", "html": result}
+            else:
+                reasoning_text = str(result)
 
             return {
                 "status": "completed",
@@ -656,9 +674,9 @@ async def execute_sql_analytics_query(
                 "user_id": request.user_id,
                 "model_used": request.model_id,
                 "timestamp": datetime.now().isoformat(),
-                "is_chart": is_chart or is_html,
-                "html": result if is_html else None,
-                "reasoning": None if is_html else result,
+                "is_chart": is_chart or is_chart_result,
+                "chart": chart_obj,        # -> frontend renderiza Plotly com chart.figure
+                "reasoning": reasoning_text,
             }
 
     except Exception as e:
