@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <title>Chatzinho VAXA</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Plotly (para renderizar as figuras) -->
+  <!-- Plotly -->
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
   <style>
     :root { --bg:#0b1220; --panel:#121a2b; --text:#eaf0ff; --muted:#9bb0d3; --accent:#5aa0ff; }
@@ -12,22 +12,30 @@
     body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:var(--bg); color:var(--text); }
     header { padding:16px 20px; border-bottom:1px solid #1e2a44; }
     header h1 { margin:0; font-size:18px; }
-    .container { max-width: 920px; margin: 0 auto; padding: 20px; }
+    .container { max-width: 1100px; margin: 0 auto; padding: 20px; }
     .chat { background:var(--panel); border:1px solid #1e2a44; border-radius:14px; padding:12px; min-height: 420px; display:flex; flex-direction:column; gap:10px; }
     .msg { padding:10px 12px; border-radius:10px; max-width:80%; line-height:1.4; }
     .msg.user { align-self:flex-end; background:#1e2a44; }
     .msg.bot { align-self:flex-start; background:#0d1527; border:1px solid #1e2a44; }
+    /* >>> Gráficos ocupam a largura toda e mais altura */
+    .msg.bot.chart { max-width:100%; padding:8px 8px; }
+    .chart-host { background:#0b1326; border:1px dashed #28406f; border-radius:12px; padding:0; margin-top:4px;
+      width:100%; min-height:440px; position:relative; overflow:hidden; }
+    @media (min-width: 768px) { .chart-host { min-height:560px; } }
+    /* expandido no duplo clique */
+    .chart-host.expanded { height:70vh; min-height:70vh; }
     .muted { color: var(--muted); font-size: 12px; }
     .row { display:flex; gap:10px; margin-top:14px; }
     input[type="text"] { flex:1; padding:12px 14px; border-radius:10px; border:1px solid #1e2a44; background:#0d1527; color:var(--text); }
     button { padding:12px 16px; border-radius:10px; border:1px solid #1e2a44; background:var(--accent); color:white; cursor:pointer; }
     button:disabled { opacity:0.6; cursor:not-allowed; }
-    .toolbar { display:flex; gap:10px; align-items:center; margin-top:8px; color:var(--muted); font-size:13px; }
+    .toolbar { display:flex; gap:10px; align-items:center; margin-top:8px; color:var(--muted); font-size:13px; flex-wrap:wrap; }
     .chip { border:1px solid #1e2a44; padding:6px 8px; border-radius:999px; }
-    .chart-host { background:#0b1326; border:1px dashed #28406f; border-radius:12px; padding:8px; margin-top:6px; }
     .hr { height:1px; background:#1e2a44; margin:6px 0; }
     a { color:#79b4ff; }
     .tiny { font-size:11px; color:#8aa3cf; }
+    /* ícone de dica para expandir */
+    .hint { position:absolute; right:10px; top:8px; font-size:11px; color:#8aa3cf; background:#0b1326aa; padding:4px 6px; border-radius:6px; }
   </style>
 </head>
 <body>
@@ -60,7 +68,7 @@
 
   <script>
     // >>>>>>>>>> CONFIGURE AQUI <<<<<<<<<<
-    const API_KEY   = "protec";              // sua API key
+    const API_KEY   = "protec";
     const BASE_URL  = "http://localhost:8000";
     const ENDPOINT  = `${BASE_URL}/sql-query`;
 
@@ -82,32 +90,43 @@
 
     function addChartContainer() {
       const wrap = document.createElement('div');
-      wrap.className = 'msg bot';
+      wrap.className = 'msg bot chart';
       const host = document.createElement('div');
       host.className = 'chart-host';
       host.id = `chart_${Math.random().toString(36).slice(2)}`;
+      // dica de expandir
+      const hint = document.createElement('div');
+      hint.className = 'hint';
+      hint.textContent = 'duplo clique p/ expandir';
+      host.appendChild(hint);
+
+      // toggle expand
+      host.addEventListener('dblclick', () => {
+        host.classList.toggle('expanded');
+        Plotly.Plots.resize(host);
+      });
+
       wrap.appendChild(host);
       chatEl.appendChild(wrap);
       chatEl.scrollTop = chatEl.scrollHeight;
+
+      // Resize automático quando o contêiner mudar
+      const ro = new ResizeObserver(() => Plotly.Plots.resize(host));
+      ro.observe(host);
+
       return host.id;
     }
 
-    // ---------- Helpers para converter string "pythonish" -> objeto Plotly ----------
+    // ---------- Helpers “pythonish” -> objeto Plotly ----------
     function pyLikeToJsObject(pyStr) {
       if (typeof pyStr !== 'string') return null;
-
-      // remove wrappers do numpy: array([...], dtype=...)
       pyStr = pyStr.replace(/array\(\s*(\[[\s\S]*?\])\s*(?:,\s*dtype=[^)]+)?\)/g, '$1');
-
-      // Python -> JS
       pyStr = pyStr.replace(/\bNone\b/g, 'null')
                    .replace(/\bTrue\b/g, 'true')
                    .replace(/\bFalse\b/g, 'false');
-
       try {
         const trimmed = pyStr.trim();
         const wrapped = (trimmed.startsWith('{') || trimmed.startsWith('[')) ? trimmed : `{${trimmed}}`;
-        // usa Function para avaliar como literal JS
         return (new Function(`"use strict"; return (${wrapped});`))();
       } catch (e) {
         console.warn('Falha ao interpretar string pythonish:', e, pyStr);
@@ -115,7 +134,6 @@
       }
     }
 
-    // decodifica objetos {dtype:'u2', bdata:'...'} em arrays JS
     function decodeNumpyVector(maybe) {
       if (!maybe || typeof maybe !== 'object') return maybe;
       if (!('bdata' in maybe) || !('dtype' in maybe)) return maybe;
@@ -123,24 +141,16 @@
         const bin = atob(maybe.bdata);
         const bytes = new Uint8Array(bin.length);
         for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-
         const dv = new DataView(bytes.buffer);
         const out = [];
         switch (String(maybe.dtype).toLowerCase()) {
-          case 'u2': case 'uint16':
-            for (let i = 0; i < bytes.byteLength; i += 2) out.push(dv.getUint16(i, true)); return out;
-          case 'i2': case 'int16':
-            for (let i = 0; i < bytes.byteLength; i += 2) out.push(dv.getInt16(i, true)); return out;
-          case 'u4': case 'uint32':
-            for (let i = 0; i < bytes.byteLength; i += 4) out.push(dv.getUint32(i, true)); return out;
-          case 'i4': case 'int32':
-            for (let i = 0; i < bytes.byteLength; i += 4) out.push(dv.getInt32(i, true)); return out;
-          case 'f4': case 'float32':
-            for (let i = 0; i < bytes.byteLength; i += 4) out.push(dv.getFloat32(i, true)); return out;
-          case 'f8': case 'float64':
-            for (let i = 0; i < bytes.byteLength; i += 8) out.push(dv.getFloat64(i, true)); return out;
-          default:
-            return maybe;
+          case 'u2': case 'uint16': for (let i=0;i<bytes.byteLength;i+=2) out.push(dv.getUint16(i,true)); return out;
+          case 'i2': case 'int16':  for (let i=0;i<bytes.byteLength;i+=2) out.push(dv.getInt16(i,true));  return out;
+          case 'u4': case 'uint32': for (let i=0;i<bytes.byteLength;i+=4) out.push(dv.getUint32(i,true)); return out;
+          case 'i4': case 'int32':  for (let i=0;i<bytes.byteLength;i+=4) out.push(dv.getInt32(i,true));  return out;
+          case 'f4': case 'float32':for (let i=0;i<bytes.byteLength;i+=4) out.push(dv.getFloat32(i,true));return out;
+          case 'f8': case 'float64':for (let i=0;i<bytes.byteLength;i+=8) out.push(dv.getFloat64(i,true));return out;
+          default: return maybe;
         }
       } catch (e) {
         console.warn('Falha ao decodificar numpy vector:', e, maybe);
@@ -151,7 +161,6 @@
     function normalizePlotlyFigure(pf) {
       if (!pf || !pf.figure) return pf;
       const fig = pf.figure;
-
       if (Array.isArray(fig.data)) {
         fig.data = fig.data.map(tr => {
           const t = {...tr};
@@ -163,7 +172,7 @@
       return pf;
     }
 
-    // -------------------- fluxo de envio --------------------
+    // -------------------- envio --------------------
     async function sendMessage() {
       const text = inputEl.value.trim();
       if (!text) return;
@@ -196,18 +205,11 @@
     async function callNonStream(payload) {
       const resp = await fetch(ENDPOINT, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-API-Key': API_KEY,
-        },
+        headers: { 'Content-Type':'application/json', 'X-API-Key': API_KEY },
         body: JSON.stringify(payload),
       });
-      if (!resp.ok) {
-        const t = await resp.text();
-        throw new Error(`HTTP ${resp.status}: ${t}`);
-      }
-      const data = await resp.json();
-      handleMessageObject(data);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+      handleMessageObject(await resp.json());
     }
 
     async function callStreaming(payload) {
@@ -222,10 +224,7 @@
         },
         body: JSON.stringify(payload),
       });
-      if (!resp.ok || !resp.body) {
-        const t = await resp.text();
-        throw new Error(`HTTP ${resp.status}: ${t}`);
-      }
+      if (!resp.ok || !resp.body) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
 
       const reader = resp.body.getReader();
       const decoder = new TextDecoder('utf-8');
@@ -236,25 +235,19 @@
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
 
-        // Processar eventos SSE: separados por \n\n
         let sepIndex;
         while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
           const rawEvent = buffer.slice(0, sepIndex);
           buffer = buffer.slice(sepIndex + 2);
 
-          // Cada linha de um evento pode começar com "data: ..."
           const lines = rawEvent.split('\n');
           for (const line of lines) {
             const trimmed = line.trim();
             if (trimmed.startsWith('data:')) {
               const jsonStr = trimmed.slice(5).trim();
               if (jsonStr) {
-                try {
-                  const obj = JSON.parse(jsonStr);
-                  handleMessageObject(obj);
-                } catch (e) {
-                  // ignora pedaços incompletos/concatenados
-                }
+                try { handleMessageObject(JSON.parse(jsonStr)); }
+                catch (e) { /* ignora pedaços */ }
               }
             }
           }
@@ -262,13 +255,17 @@
       }
     }
 
-    // -------------------- handler de mensagens --------------------
+    // -------------------- handler --------------------
     function handleMessageObject(obj) {
-      // Caso 1: já vem com chart JSON (ToolResult do servidor)
+      // Oculta ruído de ToolCall/RunStarted (linhas de log)
+      if (obj?.event && /^(RunStarted|ToolCallStarted|ToolCallCompleted)$/.test(obj.event)) {
+        return;
+      }
+
+      // Caso 1: JSON nativo vindo do servidor
       if (obj?.chart && obj.chart.type === 'plotly_figure' && obj.chart.figure) {
         const id = addChartContainer();
-        const fig = obj.chart.figure;
-        Plotly.newPlot(id, fig.data, fig.layout, { responsive: true });
+        Plotly.newPlot(id, obj.chart.figure.data, obj.chart.figure.layout, { responsive: true });
         if (obj.chart.meta?.title) addMsg('bot', `<span class="muted">Gráfico: ${escapeHtml(obj.chart.meta.title)}</span>`);
         return;
       }
@@ -278,7 +275,7 @@
         return;
       }
 
-      // Caso 2: seu caso atual — RunCompleted com content string “pythonish”
+      // Caso 2: RunCompleted com content string “pythonish”
       if (obj?.is_chart && obj?.event === 'RunCompleted' && typeof obj?.content === 'string') {
         const parsed = pyLikeToJsObject(obj.content);
         if (parsed && parsed.type === 'plotly_figure' && parsed.figure) {
@@ -297,12 +294,11 @@
         return;
       }
 
-      // Não-stream: completed
+      // Não-stream
       if (obj?.status === 'completed') {
         if (obj.is_chart && obj.chart && obj.chart.type === 'plotly_figure') {
           const id = addChartContainer();
-          const fig = obj.chart.figure;
-          Plotly.newPlot(id, fig.data, fig.layout, { responsive: true });
+          Plotly.newPlot(id, obj.chart.figure.data, obj.chart.figure.layout, { responsive: true });
           return;
         }
         if (obj.reasoning) {
@@ -313,19 +309,12 @@
     }
 
     function escapeHtml(s) {
-      return String(s)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+      return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
     }
 
     // UI
-    sendBtn.addEventListener('click', sendMessage);
-    inputEl.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') sendMessage();
-    });
+    document.getElementById('send').addEventListener('click', sendMessage);
+    document.getElementById('q').addEventListener('keydown', (e) => { if (e.key === 'Enter') sendMessage(); });
 
     // Mensagem de boas-vindas
     addMsg('bot', 'Olá! Manda uma pergunta. Se pedir <em>gráfico</em>, eu tento desenhar com Plotly 🙂');

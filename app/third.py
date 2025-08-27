@@ -41,17 +41,19 @@ from .sample_queries import sample_queries
 from .semantic_model import SEMANTIC_MODEL
 from .clickhouse_rules import clickhouse_rules
 import unicodedata
+import re
 
 CHART_KEYWORDS = {"grafico", "grafico", "visualizacao", "visualização", "gráfico"}
 
 
 def _normalize(s: str) -> str:
-    # strip accents and lowercase
-    return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)).lower()
+    return "".join(c for c in unicodedata.normalize("NFKD", s)
+                   if not unicodedata.combining(c)).lower()
 
 def _has_chart_keywords(text: str) -> bool:
     t = _normalize(text)
-    return any(kw in t for kw in {"grafico", "visualizacao", "gráfico", "visualização"})
+    # procura palavras inteiras (\b = word boundary)
+    return any(re.search(rf"\b{kw}\b", t) for kw in CHART_KEYWORDS)
 
 
 # --- Configuration & Initialization ---
