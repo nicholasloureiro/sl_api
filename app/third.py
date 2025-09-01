@@ -31,6 +31,7 @@ from agno.knowledge.json import JSONKnowledgeBase
 from agno.knowledge.text import TextKnowledgeBase
 from agno.models.openai import OpenAIChat
 from agno.storage.agent.postgres import PostgresAgentStorage
+from agno.memory.v2 import Memory      
 from agno.tools.file import FileTools
 from agno.tools import tool, Toolkit
 from agno.vectordb.pgvector import PgVector
@@ -42,7 +43,7 @@ from .clickhouse_rules import clickhouse_rules
 import unicodedata
 import re
 
-CHART_KEYWORDS = {"grafico", "grafico", "visualizacao", "visualização", "gráfico"}
+CHART_KEYWORDS = {"grafico", "grafico", "visualizacao", "visualização", "gráfico", "histograma"}
 
 
 def _normalize(s: str) -> str:
@@ -262,8 +263,9 @@ class AnalyticsAgent:
         # Storage and Knowledge setup
         self.agent_storage = PostgresAgentStorage(
             db_url=POSTGRES_DB_URL,
-            table_name="sql_agent",
+            table_name="sql_agent_sessions",
             schema="ai",
+            auto_upgrade_schema=True,
         )
 
         self.agent_knowledge = CombinedKnowledgeBase(
@@ -330,8 +332,11 @@ class AnalyticsAgent:
             user_id=user_id,
             session_id=session_id,
             storage=self.agent_storage,
+            memory=Memory(),   
             knowledge=self.agent_knowledge,
             add_history_to_messages=True,
+            num_history_runs=5,                  
+            search_previous_sessions_history=False,
             markdown=True,
             # IMPORTANT: trim auto tools to avoid extra hops
             search_knowledge=True,
