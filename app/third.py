@@ -21,7 +21,6 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
 from rich.console import Console
 from rich.panel import Panel
-from fastapi.responses import HTMLResponse
 from scalar_fastapi import get_scalar_api_reference
 
 # Agno imports
@@ -149,11 +148,6 @@ class ClickHouseClient:
             return f"Error getting table sample: {str(e)}"
 
 
-# --- Agno Tools for ClickHouse (function-based) ---
-# Using function-style tools avoids Toolkit registration complexities
-# and the @tool decorator can directly control stop/show behavior.
-
-# Global singleton client for tools
 _CLICKHOUSE_CLIENT_SINGLETON = ClickHouseClient()
 
 
@@ -268,7 +262,7 @@ class AnalyticsAgent:
         # Storage and Knowledge setup
         self.agent_storage = PostgresAgentStorage(
             db_url=POSTGRES_DB_URL,
-            table_name="sql_agent_sessions",
+            table_name="sql_agent",
             schema="ai",
         )
 
@@ -898,6 +892,34 @@ async def delete_session(session_id: str, api_key: str = Depends(verify_api_key)
         return {"status": "error", "error": str(e)}
     finally:
         await conn.close()
+
+
+from fastapi import Query, HTTPException
+
+@app.get("/sessions/{session_id}/messages")
+async def get_session_messages(
+    session_id: str,
+    user_id: str = Query(..., description="Must match the user_id used when writing runs"),
+    api_key: str = Depends(verify_api_key),
+):
+    try:
+        agent = analytics_agent.get_agent(
+            session_id=session_id,
+            user_id=user_id,
+            model_id=DEFAULT_MODEL,
+            debug_mode=False,
+        )
+        msgs = agent.get_messages_for_session()  # <- session turns
+        payload = [m.model_dump(include={"role", "content"}) for m in msgs]
+        return {
+            "status": "success",
+            "session_id": session_id,
+            "user_id": user_id,
+            "runs": len(payload),       # <- real number of turns
+            "messages": payload,
+        }
+    except Exception as e:
+        raise HTTPException(500, f"Could not load messages: {e}")
 
 
 @app.delete("/sessions")
