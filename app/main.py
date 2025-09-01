@@ -95,8 +95,8 @@ class FilterRequest(BaseModel):
     
     # Demographic filters
     gender: Optional[str] = Field(None, pattern="^[MF]$")
-    min_age: Optional[int] = Field(None, ge=0, le=120)
-    max_age: Optional[int] = Field(None, ge=0, le=120)
+    min_age: Optional[int] = Field(None, ge=0, le=135)
+    max_age: Optional[int] = Field(None, ge=0, le=135)
     age_groups: Optional[List[AgeGroup]] = None
     race_colors: Optional[List[str]] = None
     
