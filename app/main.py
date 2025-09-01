@@ -531,13 +531,13 @@ async def get_comprehensive_filter_metadata(client: ClickHouseDep) -> FilterStat
         # Get states
         states_query = """
         SELECT 
-            sigla_uf_paciente as value,
-            nome_uf_paciente as name,
+            sigla_uf_estabelecimento as value,
+            nome_uf_estabelecimento as name,
             count(*) as count,
-            uniq(nome_municipio_paciente) as cities_count
+            uniq(nome_municipio_estabelecimento) as cities_count
         FROM events
-        WHERE sigla_uf_paciente != '' AND sigla_uf_paciente IS NOT NULL
-        GROUP BY sigla_uf_paciente, nome_uf_paciente
+        WHERE sigla_uf_estabelecimento != '' AND sigla_uf_estabelecimento IS NOT NULL
+        GROUP BY sigla_uf_estabelecimento, nome_uf_estabelecimento
         ORDER BY count DESC
         """
         
@@ -550,12 +550,12 @@ async def get_comprehensive_filter_metadata(client: ClickHouseDep) -> FilterStat
         # Get cities
         cities_query = """
         SELECT 
-            nome_municipio_paciente as value,
-            sigla_uf_paciente as state,
+            nome_municipio_estabelecimento as value,
+            sigla_uf_estabelecimento as state,
             count(*) as count
         FROM events
-        WHERE nome_municipio_paciente != '' AND nome_municipio_paciente IS NOT NULL
-        GROUP BY nome_municipio_paciente, sigla_uf_paciente
+        WHERE nome_municipio_estabelecimento != '' AND nome_municipio_estabelecimento IS NOT NULL
+        GROUP BY nome_municipio_estabelecimento, sigla_uf_estabelecimento
         ORDER BY count DESC
         LIMIT 200
         """
