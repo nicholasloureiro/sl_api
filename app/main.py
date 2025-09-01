@@ -871,7 +871,7 @@ async def get_geographic_distribution(
         elif level == "city":
             query = f"""
             SELECT 
-                nome_municipio_paciente as name,
+                nome_municipio_estabelecimento as name,
                 sigla_uf_paciente as state_code,
                 nome_uf_paciente as state_name,
                 count(*) as total_vaccinations,
@@ -879,7 +879,7 @@ async def get_geographic_distribution(
                 round(avg(numero_idade_paciente), 2) as avg_age
             FROM events 
             {where_clause}
-            GROUP BY nome_municipio_paciente, sigla_uf_paciente, nome_uf_paciente
+            GROUP BY nome_municipio_estabelecimento, sigla_uf_paciente, nome_uf_paciente
             ORDER BY total_vaccinations DESC
             LIMIT %(top_n)s
             """
