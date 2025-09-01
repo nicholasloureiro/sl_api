@@ -30,10 +30,9 @@ from agno.knowledge.combined import CombinedKnowledgeBase
 from agno.knowledge.json import JSONKnowledgeBase
 from agno.knowledge.text import TextKnowledgeBase
 from agno.models.openai import OpenAIChat
-from agno.storage.agent.postgres import PostgresAgentStorage
-from agno.memory.v2 import Memory      
+from agno.storage.agent.postgres import PostgresAgentStorage 
 from agno.tools.file import FileTools
-from agno.tools import tool, Toolkit
+from agno.tools import tool
 from agno.vectordb.pgvector import PgVector
 
 # Local imports
@@ -332,7 +331,6 @@ class AnalyticsAgent:
             user_id=user_id,
             session_id=session_id,
             storage=self.agent_storage,
-            memory=Memory(),   
             knowledge=self.agent_knowledge,
             add_history_to_messages=True,
             num_history_runs=5,                  
@@ -349,8 +347,7 @@ class AnalyticsAgent:
                 ch_describe_table,
                 FileTools(base_dir=output_dir),
             ],
-            show_tool_calls=True,
-            #tool_call_limit=3,          # hard cap on tool invocations per run
+            show_tool_calls=True,         # hard cap on tool invocations per run
             reasoning=False,            # no ReasoningTools -> no 'think' loops
             debug_mode=debug_mode,
             description=dedent(
@@ -897,34 +894,6 @@ async def delete_session(session_id: str, api_key: str = Depends(verify_api_key)
         return {"status": "error", "error": str(e)}
     finally:
         await conn.close()
-
-
-from fastapi import Query, HTTPException
-
-@app.get("/sessions/{session_id}/messages")
-async def get_session_messages(
-    session_id: str,
-    user_id: str = Query(..., description="Must match the user_id used when writing runs"),
-    api_key: str = Depends(verify_api_key),
-):
-    try:
-        agent = analytics_agent.get_agent(
-            session_id=session_id,
-            user_id=user_id,
-            model_id=DEFAULT_MODEL,
-            debug_mode=False,
-        )
-        msgs = agent.get_messages_for_session()  # <- session turns
-        payload = [m.model_dump(include={"role", "content"}) for m in msgs]
-        return {
-            "status": "success",
-            "session_id": session_id,
-            "user_id": user_id,
-            "runs": len(payload),       # <- real number of turns
-            "messages": payload,
-        }
-    except Exception as e:
-        raise HTTPException(500, f"Could not load messages: {e}")
 
 
 @app.delete("/sessions")
