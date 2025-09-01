@@ -852,19 +852,19 @@ async def get_geographic_distribution(
         if level == "state":
             query = f"""
             SELECT 
-                sigla_uf_paciente as code,
-                nome_uf_paciente as name,
+                sigla_uf_estabelecimento as code,
+                nome_uf_estabelecimento as name,
                 count(*) as total_vaccinations,
                 uniq(codigo_paciente) as unique_patients,
                 round(avg(numero_idade_paciente), 2) as avg_age,
                 countIf(tipo_sexo_paciente = 'F') as female_count,
                 countIf(tipo_sexo_paciente = 'M') as male_count,
-                uniq(nome_municipio_paciente) as cities_count,
+                uniq(nome_municipio_estabelecimento) as cities_count,
                 countIf(toInt32OrNull(codigo_dose_vacina) >= 2) as completed_series,
                 round(countIf(toInt32OrNull(codigo_dose_vacina) >= 2) / uniq(codigo_paciente) * 100, 2) as completion_rate
             FROM events 
             {where_clause}
-            GROUP BY sigla_uf_paciente, nome_uf_paciente
+            GROUP BY sigla_uf_estabelecimento, nome_uf_estabelecimento
             ORDER BY total_vaccinations DESC
             LIMIT %(top_n)s
             """
@@ -872,14 +872,14 @@ async def get_geographic_distribution(
             query = f"""
             SELECT 
                 nome_municipio_estabelecimento as name,
-                sigla_uf_paciente as state_code,
-                nome_uf_paciente as state_name,
+                sigla_uf_estabelecimento as state_code,
+                nome_uf_estabelecimento as state_name,
                 count(*) as total_vaccinations,
                 uniq(codigo_paciente) as unique_patients,
                 round(avg(numero_idade_paciente), 2) as avg_age
             FROM events 
             {where_clause}
-            GROUP BY nome_municipio_estabelecimento, sigla_uf_paciente, nome_uf_paciente
+            GROUP BY nome_municipio_estabelecimento, sigla_uf_estabelecimento, nome_uf_estabelecimento
             ORDER BY total_vaccinations DESC
             LIMIT %(top_n)s
             """
@@ -887,18 +887,18 @@ async def get_geographic_distribution(
             query = f"""
             SELECT 
                 CASE 
-                    WHEN sigla_uf_paciente IN ('AC', 'AP', 'AM', 'PA', 'RO', 'RR', 'TO') THEN 'Norte'
-                    WHEN sigla_uf_paciente IN ('AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE') THEN 'Nordeste'
-                    WHEN sigla_uf_paciente IN ('GO', 'MT', 'MS', 'DF') THEN 'Centro-Oeste'
-                    WHEN sigla_uf_paciente IN ('ES', 'MG', 'RJ', 'SP') THEN 'Sudeste'
-                    WHEN sigla_uf_paciente IN ('PR', 'RS', 'SC') THEN 'Sul'
+                    WHEN sigla_uf_estabelecimento IN ('AC', 'AP', 'AM', 'PA', 'RO', 'RR', 'TO') THEN 'Norte'
+                    WHEN sigla_uf_estabelecimento IN ('AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE') THEN 'Nordeste'
+                    WHEN sigla_uf_estabelecimento IN ('GO', 'MT', 'MS', 'DF') THEN 'Centro-Oeste'
+                    WHEN sigla_uf_estabelecimento IN ('ES', 'MG', 'RJ', 'SP') THEN 'Sudeste'
+                    WHEN sigla_uf_estabelecimento IN ('PR', 'RS', 'SC') THEN 'Sul'
                     ELSE 'Outros'
                 END as region,
                 count(*) as total_vaccinations,
                 uniq(codigo_paciente) as unique_patients,
                 round(avg(numero_idade_paciente), 2) as avg_age,
-                uniq(sigla_uf_paciente) as states_count,
-                uniq(nome_municipio_paciente) as cities_count
+                uniq(sigla_uf_estabelecimento) as states_count,
+                uniq(nome_municipio_estabelecimento) as cities_count
             FROM events 
             {where_clause}
             GROUP BY region
