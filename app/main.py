@@ -1149,94 +1149,9 @@ async def get_vaccine_performance_analysis(
         raise HTTPException(status_code=500, detail=f"Vaccine performance analysis error: {str(e)}")
 
 # =============================================================================
-# SPECIALIZED CHART ENDPOINTS
-# =============================================================================
-
-@app.post("/charts/heatmap")
-@query_timer
-async def get_vaccination_heatmap(
-    client: ClickHouseDep,
-    filters: FilterRequest = FilterRequest(),
-    x_axis: str = Query("state", pattern="^(state|vaccine|age_group|month)$"),
-    y_axis: str = Query("vaccine", pattern="^(state|vaccine|age_group|month)$"),
-    metric: str = Query("count", pattern="^(count|unique_patients|avg_age)$")
-) -> ChartData:
-    """Generate heatmap data for vaccination analysis"""
-    try:
-        if x_axis == y_axis:
-            raise HTTPException(status_code=400, detail="X and Y axis must be different")
-        
-        conditions, params = build_comprehensive_where_conditions(filters)
-        where_clause = "WHERE " + " AND ".join(conditions) if conditions else ""
-        
-        # Define axis mappings
-        axis_mappings = {
-            "state": "sigla_uf_paciente",
-            "vaccine": "sigla_vacina",
-            "age_group": """multiIf(
-                numero_idade_paciente < 18, '0-17',
-                numero_idade_paciente < 30, '18-29',
-                numero_idade_paciente < 50, '30-49',
-                numero_idade_paciente < 65, '50-64',
-                '65+'
-            )""",
-            "month": "data_vacina"
-        }
-        
-        # Define metric mappings
-        metric_mappings = {
-            "count": "count(*)",
-            "unique_patients": "uniq(codigo_paciente)",
-            "avg_age": "round(avg(numero_idade_paciente), 2)"
-        }
-        
-        x_field = axis_mappings[x_axis]
-        y_field = axis_mappings[y_axis]
-        metric_field = metric_mappings[metric]
-        
-        query = f"""
-        SELECT 
-            {x_field} as x_value,
-            {y_field} as y_value,
-            {metric_field} as metric_value
-        FROM events 
-        {where_clause}
-        GROUP BY x_value, y_value
-        ORDER BY x_value, y_value
-        """
-        
-        result = client.query(query, params)
-        
-        # Convert to heatmap format
-        heatmap_data = []
-        for row in result.result_rows:
-            x_val, y_val, metric_val = row
-            heatmap_data.append({
-                "x": str(x_val),
-                "y": str(y_val),
-                "value": float(metric_val) if metric_val is not None else 0
-            })
-        
-        return ChartData(
-            chart_type=ChartType.heatmap,
-            title=f"Vaccination Heatmap: {y_axis.replace('_', ' ').title()} vs {x_axis.replace('_', ' ').title()}",
-            data=heatmap_data,
-            options={"responsive": True},
-            metadata={
-                "x_axis": x_axis,
-                "y_axis": y_axis,
-                "metric": metric,
-                "data_points": len(heatmap_data)
-            }
-        )
-        
-    except Exception as e:
-        logger.error(f"Heatmap generation error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Heatmap generation error: {str(e)}")
-
-# =============================================================================
 # ADVANCED SEARCH AND EXPORT
 # =============================================================================
+
 
 @app.post("/search/advanced")
 @query_timer
@@ -1289,7 +1204,7 @@ async def advanced_search_with_filters(
             FROM events 
             {where_clause}
             ORDER BY data_vacina DESC
-            LIMIT 10000
+            LIMIT 1000
             """
             
             result = client.query(export_query, params)
