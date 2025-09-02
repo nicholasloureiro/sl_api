@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 from textwrap import dedent
-from typing import AsyncGenerator, Dict, Optional
+from typing import AsyncGenerator, Dict, Optional, List, Any, Literal, Tuple
 import plotly.express as px
 import pandas as pd
 from pathlib import Path
@@ -642,6 +642,45 @@ async def warmup_agents():
     await analytics_agent.initialize_context()
 
 
+def _safe_json_load(obj: Any) -> dict:
+    if obj is None:
+        return {}
+    if isinstance(obj, (bytes, bytearray)):
+        try: 
+            return json.loads(obj.decode("utf-8"))
+        except Exception: 
+            return {}
+    if isinstance(obj, str):
+        try: 
+            return json.loads(obj)
+        except Exception: 
+            return {}
+    if isinstance(obj, dict):
+        return obj
+    return {}
+
+
+def _normalize_roles(roles_param: Optional[str]) -> set[str]:
+    return {"user", "assistant"} if not roles_param else {r.strip().lower() for r in roles_param.split(",") if r.strip()}
+
+
+def _extract_messages(runs: List[dict], roles: set[str]) -> List[dict]:
+    out: List[dict] = []
+    for i, run in enumerate(runs):
+        run_sid = run.get("session_id")
+        for msg in run.get("messages", []):
+            role = (msg.get("role") or "").lower()
+            if role in roles:
+                out.append({
+                    "role": role,
+                    "content": msg.get("content"),
+                    "created_at": msg.get("created_at"),
+                    "run_index": i,
+                    "run_session_id": run_sid,
+                })
+    return out
+
+
 console = Console()
 
 
@@ -740,22 +779,6 @@ async def execute_sql_analytics_query(
                     if is_chart and event in ("RunResponseContent", "RunResult"):
                         continue
 
-                        # fallback para outros tipos de retorno de tool
-                        payload = {
-                            "status": "streaming",
-                            "event": event,
-                            "timestamp": datetime.now().isoformat(),
-                            "is_chart": is_chart,
-                            "content": content,
-                        }
-                        yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
-                        continue
-
-                    # For chart runs, ignore the model’s markdown tokens
-                    if is_chart and event == "RunResponseContent":
-                        continue
-
-                    # Non-chart or other events → pass through as text
                     payload = {
                         "status": "streaming",
                         "event": event,
@@ -853,6 +876,95 @@ async def list_sessions(api_key: str = Depends(verify_api_key)):
         await conn.close()
 
 
+@app.get("/sessions/{session_id}/messages")
+async def get_session_messages(
+    session_id: str,
+    api_key: str = Depends(verify_api_key),
+    user_id: Optional[str] = None,
+    roles: Optional[str] = "user,assistant",
+    limit: Optional[int] = None,
+    offset: int = 0,
+    order: Literal["asc", "desc"] = "asc"
+):
+    """
+    Returns messages for a session filtering *internal* runs by run.session_id == {session_id}.
+"""
+    conn = await asyncpg.connect(dsn=POSTGRES_DB_URL)
+    try:
+        # Pull all rows that might contain runs for this user/session (storage can coalesce runs)
+        rows = await conn.fetch(
+            """
+            SELECT session_id, user_id, memory, created_at, updated_at
+            FROM ai.sql_agent_sessions
+            WHERE ($1::text IS NULL OR user_id = $1::text)
+            ORDER BY created_at ASC
+            """,
+            user_id,
+        )
+        if not rows:
+            raise HTTPException(status_code=404, detail="No session rows found")
+
+        # Gather all runs across rows, then filter to our session_id
+        all_runs: List[dict] = []
+        for r in rows:
+            mem = _safe_json_load(r["memory"])
+            all_runs.extend(mem.get("runs", []))
+
+        target_runs = [run for run in all_runs if run.get("session_id") == session_id]
+        if not target_runs:
+            return {
+                "status": "success",
+                "session_id": session_id,
+                "user_id": user_id or (rows[-1]["user_id"] if rows else None),
+                "total_messages": 0,
+                "returned": 0,
+                "offset": offset,
+                "order": order,
+                "roles": sorted(list(_normalize_roles(roles))),
+                "messages": [],
+            }
+
+        runs_for_output = [target_runs[-1]]
+
+        role_set = _normalize_roles(roles)
+        msgs = _extract_messages(runs_for_output, role_set)
+
+        # Sort by created_at when present; keep None at the end (asc) / start (desc)
+        def _sort_key(m: dict) -> Tuple:
+            ts = m.get("created_at")
+            return (0, ts) if ts is not None else (1, None)
+
+        reverse = (order == "desc")
+        msgs_sorted = sorted(msgs, key=_sort_key, reverse=reverse)
+
+        # Pagination
+        if offset < 0: 
+            offset = 0
+        if limit is not None and limit < 0: 
+            limit = None
+        paginated = msgs_sorted[offset: offset + limit if limit is not None else None]
+
+        return {
+                "status": "success",
+                "session_id": session_id,
+                "user_id": user_id or rows[-1]["user_id"],
+                "total_messages": len(msgs_sorted),
+                "returned": len(paginated),
+                "offset": offset,
+                "order": order,
+                "roles": sorted(list(role_set)),
+                "messages": paginated,
+            }
+       
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.exception("Error fetching session messages")
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {e}")
+    finally:
+        await conn.close()
+
+
 @app.get("/tables")
 async def list_available_tables():
     try:
@@ -891,20 +1003,6 @@ async def delete_session(session_id: str, api_key: str = Depends(verify_api_key)
         return {"status": "success", "message": f"Sessão {session_id} deletada com sucesso", "rows_deleted": rows_affected}
     except Exception as e:
         logging.error(f"Error deleting session: {e}")
-        return {"status": "error", "error": str(e)}
-    finally:
-        await conn.close()
-
-
-@app.delete("/sessions")
-async def delete_all_sessions(api_key: str = Depends(verify_api_key)):
-    conn = await asyncpg.connect(dsn=POSTGRES_DB_URL)
-    try:
-        result = await conn.execute("DELETE FROM ai.sql_agent_sessions")
-        rows_affected = int(result.split()[-1]) if result else 0
-        return {"status": "success", "message": "Todas as sessões foram deletadas", "rows_deleted": rows_affected}
-    except Exception as e:
-        logging.error(f"Error deleting all sessions: {e}")
         return {"status": "error", "error": str(e)}
     finally:
         await conn.close()
