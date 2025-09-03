@@ -388,6 +388,7 @@ When a question requires data, write ONE correct SQL query and execute it via th
         4) Always include the SQL used.
         5) Always respond in Brazilian Portuguese.
         6) For charts: Return only the structured data from the tool, no additional formatting.
+        7) *Never* render a chart when kind=table, or when the user asks for a tabela.
     
 
         Rules:
