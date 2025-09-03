@@ -102,20 +102,20 @@ def build_comprehensive_where_conditions(
 
     # Geographic filters
     if filters.states:
-        placeholders = ",".join([f"%(state_{i})s" for i in range(len(filters.FilterRequest.states))])
+        placeholders = ",".join([f"%(state_{i})s" for i in range(len(filters.states))])
         conditions.append(f"sigla_uf_paciente IN ({placeholders})")
         for i, state in enumerate(filters.states):
             params[f"state_{i}"] = state
 
     if filters.cities:
-        placeholders = ",".join([f"%(city_{i})s" for i in range(len(filters.FilterRequest.cities))])
+        placeholders = ",".join([f"%(city_{i})s" for i in range(len(filters.cities))])
         conditions.append(f"nome_municipio_paciente IN ({placeholders})")
         for i, city in enumerate(filters.cities):
             params[f"city_{i}"] = city
 
     if filters.exclude_states:
         placeholders = ",".join(
-            [f"%(exclude_state_{i})s" for i in range(len(filters.FilterRequest.exclude_states))]
+            [f"%(exclude_state_{i})s" for i in range(len(filters.exclude_states))]
         )
         conditions.append(f"sigla_uf_paciente NOT IN ({placeholders})")
         for i, state in enumerate(filters.exclude_states):
@@ -161,7 +161,7 @@ def build_comprehensive_where_conditions(
     # Race/color filters
     if filters.race_colors:
         placeholders = ",".join(
-            [f"%(race_{i})s" for i in range(len(filters.FilterRequest.race_colors))]
+            [f"%(race_{i})s" for i in range(len(filters.race_colors))]
         )
         conditions.append(f"nome_raca_cor_paciente IN ({placeholders})")
         for i, race in enumerate(filters.race_colors):
@@ -185,7 +185,7 @@ def build_comprehensive_where_conditions(
     # Establishment filters
     if filters.establishment_types:
         placeholders = ",".join(
-            [f"%(est_type_{i})s" for i in range(len(filters.FilterRequest.establishment_types))]
+            [f"%(est_type_{i})s" for i in range(len(filters.establishment_types))]
         )
         conditions.append(f"codigo_tipo_estabelecimento IN ({placeholders})")
         for i, est_type in enumerate(filters.establishment_types):
