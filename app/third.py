@@ -10,7 +10,6 @@ from textwrap import dedent
 from typing import AsyncGenerator, Dict, Optional, List, Any, Literal, Tuple
 import plotly.express as px
 import pandas as pd
-from pathlib import Path
 import asyncpg
 import clickhouse_connect
 from dotenv import load_dotenv
@@ -42,7 +41,7 @@ from .clickhouse_rules import clickhouse_rules
 import unicodedata
 import re
 
-CHART_KEYWORDS = {"grafico", "grafico", "visualizacao", "visualização", "gráfico", "histograma"}
+CHART_KEYWORDS = {"grafico", "grafico", "visualizacao", "visualização", "gráfico", "histograma", "tabela"}
 
 
 def _normalize(s: str) -> str:
@@ -182,10 +181,11 @@ def render_plotly_chart(
         else:
             fig = px.bar(df, x=x, y=y, color=color, title=title)
 
-        # JSON 100% serializável
+        # Ensure JSON serialization
         figure_json = fig.to_plotly_json()
-
-        return {
+        
+        # Force the tool to return structured data, not HTML
+        result = {
             "type": "plotly_figure",
             "schema": "plotly",
             "kind": kind,
@@ -196,6 +196,9 @@ def render_plotly_chart(
             },
             "figure": figure_json,
         }
+        
+        # Return as a structured object, not a string
+        return result
 
     except Exception as e:
         return {"type": "chart_error", "message": f"Erro ao gerar gráfico: {str(e)}"}
@@ -371,13 +374,16 @@ You combine deep public health and epidemiological knowledge with advanced Click
 
 When a question requires data, write ONE correct SQL query and execute it via the `run_sql_query` tool.
 
-   **Charting rule**:
+    **Charting rule**:
         - If the user mentions any of these words: "gráfico", "grafico", "visualização", "visualizacao",
           then prefer using the `render_plotly_chart` tool **instead of** `ch_run_sql_query`.
         - Provide one correct SQL for the chart tool in the `sql` argument (no semicolon).
         - Choose a sensible chart `kind` (e.g., "bar", "line") and reasonable `x`, `y`, and optional `color`.
-        - Save path returned by the tool should be visible in the response.
+        - IMPORTANT: When using render_plotly_chart, do NOT convert the result to HTML or base64.
+          Return the raw JSON result from the tool.
         
+
+    
         Steps:
         1) Identify relevant tables using the <semantic_model>.
         2) If needed, call `ch_describe_table` to confirm columns.
@@ -385,6 +391,8 @@ When a question requires data, write ONE correct SQL query and execute it via th
            Otherwise → call `ch_run_sql_query(sql)`.
         4) Always include the SQL used.
         5) Always respond in Brazilian Portuguese.
+        6) For charts: Return only the structured data from the tool, no additional formatting.
+    
 
         Rules:
         - ClickHouse syntax only (LIMIT, toDate(), etc)
@@ -754,28 +762,43 @@ async def execute_sql_analytics_query(
                     event = getattr(chunk, "event", None)
                     content = getattr(chunk, "content", None)
 
-                    # === Only pass through tool HTML; drop markdown chatter ===
+                    # Enhanced tool result parsing
                     if event == "ToolResult":
+                        chart_data = None
+                        
+                        # Direct dict check
                         if isinstance(content, dict) and content.get("type") in {"plotly_figure", "chart_error"}:
+                            chart_data = content
+                        
+                        # String parsing attempts
+                        elif isinstance(content, str):
+                            # Try JSON parsing
+                            try:
+                                parsed = json.loads(content)
+                                if isinstance(parsed, dict) and parsed.get("type") in {"plotly_figure", "chart_error"}:
+                                    chart_data = parsed
+                            except:
+            
+                                try:
+                                    import ast
+                                    parsed = ast.literal_eval(content)
+                                    if isinstance(parsed, dict) and parsed.get("type") in {"plotly_figure", "chart_error"}:
+                                        chart_data = parsed
+                                except:
+                                    pass
+                        
+                        if chart_data:
                             payload = {
                                 "status": "streaming",
                                 "event": event,
                                 "timestamp": datetime.now().isoformat(),
                                 "is_chart": True,
-                                "chart": content,  # -> contém "figure": {data, layout}
+                                "chart": chart_data,
                             }
                             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
                             continue
-                    if isinstance(content, str) and content.strip().startswith("{'type':"):
-                        try:
-                            parsed = ast.literal_eval(content)
-                            if isinstance(parsed, dict) and parsed.get("type") in {"plotly_figure", "chart_error"}:
-                                payload = {"status":"streaming","event":event,"timestamp":datetime.now().isoformat(),
-                                        "is_chart":True,"chart":parsed}
-                                yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
-                                continue
-                        except Exception:
-                            pass 
+
+                    # Skip text content for chart requests to avoid base64 issues
                     if is_chart and event in ("RunResponseContent", "RunResult"):
                         continue
 
