@@ -17,6 +17,7 @@ import logging
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+
 @router.get("/")
 def root():
     return {"ok": True}
@@ -36,39 +37,39 @@ async def get_dashboard_overview(
 
         # Summary statistics query
         summary_query = f"""
-        SELECT 
+        SELECT
             count(*) as total_vaccinations,
             uniq(codigo_paciente) as unique_patients,
             uniq(sigla_vacina) as unique_vaccines,
             uniq(sigla_uf_paciente) as unique_states,
             uniq(nome_municipio_paciente) as unique_cities,
             uniq(codigo_cnes_estabelecimento) as unique_establishments,
-            
+
             -- Gender distribution
             countIf(tipo_sexo_paciente = 'F') as female_count,
             countIf(tipo_sexo_paciente = 'M') as male_count,
-            
+
             -- Age statistics
             round(avg(numero_idade_paciente), 2) as avg_age,
             min(numero_idade_paciente) as min_age,
             max(numero_idade_paciente) as max_age,
-            
+
             -- Dose distribution
             countIf(toInt32OrNull(codigo_dose_vacina) = 1) as first_doses,
             countIf(toInt32OrNull(codigo_dose_vacina) = 2) as second_doses,
             countIf(toInt32OrNull(codigo_dose_vacina) >= 3) as boosters,
-            
+
             -- Date range
             min(data_vacina) as earliest_date,
             max(data_vacina) as latest_date,
-            
+
             -- Age groups
             countIf(numero_idade_paciente < 18) as children,
             countIf(numero_idade_paciente >= 18 AND numero_idade_paciente < 30) as young_adults,
             countIf(numero_idade_paciente >= 30 AND numero_idade_paciente < 50) as adults,
             countIf(numero_idade_paciente >= 50 AND numero_idade_paciente < 65) as middle_aged,
             countIf(numero_idade_paciente >= 65) as seniors
-        FROM events 
+        FROM events
         {where_clause}
         """
 
@@ -114,11 +115,11 @@ async def get_dashboard_overview(
             )
 
             trends_query = f"""
-            SELECT 
+            SELECT
                 toDate(data_vacina) as date,
                 count(*) as daily_count,
                 uniq(codigo_paciente) as unique_patients
-            FROM events 
+            FROM events
             {trend_where_clause}
             GROUP BY toDate(data_vacina)
             ORDER BY date
@@ -141,11 +142,11 @@ async def get_dashboard_overview(
 
             # Chart 2: Vaccine distribution
             vaccine_query = f"""
-            SELECT 
+            SELECT
                 sigla_vacina as vaccine,
                 count(*) as count,
                 round(count(*) * 100.0 / sum(count(*)) OVER(), 2) as percentage
-            FROM events 
+            FROM events
             {where_clause}
             GROUP BY sigla_vacina
             ORDER BY count DESC
@@ -223,7 +224,7 @@ async def get_comprehensive_filter_metadata(client: ClickHouseDep) -> FilterStat
     try:
         # Get vaccines
         vaccines_query = """
-        SELECT 
+        SELECT
             sigla_vacina as value,
             count(*) as count,
             uniq(codigo_paciente) as unique_patients
@@ -246,7 +247,7 @@ async def get_comprehensive_filter_metadata(client: ClickHouseDep) -> FilterStat
 
         # Get states
         states_query = """
-        SELECT 
+        SELECT
             sigla_uf_estabelecimento as value,
             nome_uf_estabelecimento as name,
             count(*) as count,
@@ -270,7 +271,7 @@ async def get_comprehensive_filter_metadata(client: ClickHouseDep) -> FilterStat
 
         # Get cities
         cities_query = """
-        SELECT 
+        SELECT
             nome_municipio_estabelecimento as value,
             sigla_uf_estabelecimento as state,
             count(*) as count
@@ -294,7 +295,7 @@ async def get_comprehensive_filter_metadata(client: ClickHouseDep) -> FilterStat
 
         # Get establishments
         establishments_query = """
-        SELECT 
+        SELECT
             codigo_tipo_estabelecimento as code,
             descricao_tipo_estabelecimento as description,
             count(*) as count,
@@ -318,13 +319,13 @@ async def get_comprehensive_filter_metadata(client: ClickHouseDep) -> FilterStat
 
         # General stats and data quality
         general_query = """
-        SELECT 
+        SELECT
             count(*) as total_records,
             min(data_vacina) as min_date,
             max(data_vacina) as max_date,
             min(numero_idade_paciente) as min_age,
             max(numero_idade_paciente) as max_age,
-            
+
             -- Data quality metrics
             countIf(codigo_paciente IS NULL OR codigo_paciente = '') as missing_patient_id,
             countIf(data_vacina IS NULL) as missing_date,
@@ -468,7 +469,7 @@ async def get_vaccinations_with_comprehensive_filters(
             pagination.sort_by = "data_vacina"
 
         query = f"""
-        SELECT 
+        SELECT
             row_number() OVER (ORDER BY {pagination.sort_by} {pagination.sort_order.value}) as row_id,
             codigo_paciente,
             sigla_vacina,
@@ -487,7 +488,7 @@ async def get_vaccinations_with_comprehensive_filters(
             codigo_lote_vacina,
             descricao_local_aplicacao,
             codigo_cnes_estabelecimento
-        FROM events 
+        FROM events
         {where_clause}
         ORDER BY {pagination.sort_by} {pagination.sort_order.value}
         LIMIT %(limit)s
@@ -586,10 +587,10 @@ async def get_advanced_time_series(
             selected_metrics = [metrics_map["total_vaccinations"]]
 
         query = f"""
-        SELECT 
+        SELECT
             {date_trunc} as period,
             {', '.join(selected_metrics)}
-        FROM events 
+        FROM events
         {where_clause}
         GROUP BY {date_trunc}
         ORDER BY period ASC
@@ -638,7 +639,7 @@ async def get_geographic_distribution(
 
         if level == "state":
             query = f"""
-            SELECT 
+            SELECT
                 sigla_uf_estabelecimento as code,
                 nome_uf_estabelecimento as name,
                 count(*) as total_vaccinations,
@@ -649,7 +650,7 @@ async def get_geographic_distribution(
                 uniq(nome_municipio_estabelecimento) as cities_count,
                 countIf(toInt32OrNull(codigo_dose_vacina) >= 2) as completed_series,
                 round(countIf(toInt32OrNull(codigo_dose_vacina) >= 2) / uniq(codigo_paciente) * 100, 2) as completion_rate
-            FROM events 
+            FROM events
             {where_clause}
             GROUP BY sigla_uf_estabelecimento, nome_uf_estabelecimento
             ORDER BY total_vaccinations DESC
@@ -657,14 +658,14 @@ async def get_geographic_distribution(
             """
         elif level == "city":
             query = f"""
-            SELECT 
+            SELECT
                 nome_municipio_estabelecimento as name,
                 sigla_uf_estabelecimento as state_code,
                 nome_uf_estabelecimento as state_name,
                 count(*) as total_vaccinations,
                 uniq(codigo_paciente) as unique_patients,
                 round(avg(numero_idade_paciente), 2) as avg_age
-            FROM events 
+            FROM events
             {where_clause}
             GROUP BY nome_municipio_estabelecimento, sigla_uf_estabelecimento, nome_uf_estabelecimento
             ORDER BY total_vaccinations DESC
@@ -672,8 +673,8 @@ async def get_geographic_distribution(
             """
         else:  # region
             query = f"""
-            SELECT 
-                CASE 
+            SELECT
+                CASE
                     WHEN sigla_uf_estabelecimento IN ('AC', 'AP', 'AM', 'PA', 'RO', 'RR', 'TO') THEN 'Norte'
                     WHEN sigla_uf_estabelecimento IN ('AL', 'BA', 'CE', 'MA', 'PB', 'PE', 'PI', 'RN', 'SE') THEN 'Nordeste'
                     WHEN sigla_uf_estabelecimento IN ('GO', 'MT', 'MS', 'DF') THEN 'Centro-Oeste'
@@ -686,7 +687,7 @@ async def get_geographic_distribution(
                 round(avg(numero_idade_paciente), 2) as avg_age,
                 uniq(sigla_uf_estabelecimento) as states_count,
                 uniq(nome_municipio_estabelecimento) as cities_count
-            FROM events 
+            FROM events
             {where_clause}
             GROUP BY region
             ORDER BY total_vaccinations DESC
@@ -730,7 +731,7 @@ async def get_demographic_insights(
         if breakdown_by in ["age_gender", "age_only"]:
             # Age group analysis
             age_query = f"""
-            SELECT 
+            SELECT
                 multiIf(
                     numero_idade_paciente < 18, '0-17',
                     numero_idade_paciente < 30, '18-29',
@@ -742,7 +743,7 @@ async def get_demographic_insights(
                 count(*) as count,
                 uniq(codigo_paciente) as unique_patients,
                 round(avg(numero_idade_paciente), 2) as avg_age
-            FROM events 
+            FROM events
             {where_clause}
             GROUP BY age_group{'' if breakdown_by == 'age_only' else ', gender'}
             ORDER BY age_group{'' if breakdown_by == 'age_only' else ', gender'}
@@ -757,7 +758,7 @@ async def get_demographic_insights(
         if breakdown_by in ["age_gender", "gender_only"]:
             # Gender analysis
             gender_query = f"""
-            SELECT 
+            SELECT
                 tipo_sexo_paciente as gender,
                 count(*) as count,
                 uniq(codigo_paciente) as unique_patients,
@@ -766,7 +767,7 @@ async def get_demographic_insights(
                 countIf(numero_idade_paciente < 18) as children,
                 countIf(numero_idade_paciente >= 18 AND numero_idade_paciente < 65) as adults,
                 countIf(numero_idade_paciente >= 65) as seniors
-            FROM events 
+            FROM events
             {where_clause}
             GROUP BY tipo_sexo_paciente
             ORDER BY count DESC
@@ -781,16 +782,16 @@ async def get_demographic_insights(
         if breakdown_by == "race":
             # Race/ethnicity analysis
             race_query = f"""
-            SELECT 
+            SELECT
                 nome_raca_cor_paciente as race_color,
                 count(*) as count,
                 uniq(codigo_paciente) as unique_patients,
                 round(avg(numero_idade_paciente), 2) as avg_age,
                 countIf(tipo_sexo_paciente = 'F') as female_count,
                 countIf(tipo_sexo_paciente = 'M') as male_count
-            FROM events 
+            FROM events
             {where_clause}
-            AND nome_raca_cor_paciente IS NOT NULL 
+            AND nome_raca_cor_paciente IS NOT NULL
             AND nome_raca_cor_paciente != ''
             GROUP BY nome_raca_cor_paciente
             ORDER BY count DESC
@@ -805,7 +806,7 @@ async def get_demographic_insights(
 
         # Summary statistics
         summary_query = f"""
-        SELECT 
+        SELECT
             count(*) as total_vaccinations,
             uniq(codigo_paciente) as total_patients,
             round(avg(numero_idade_paciente), 2) as overall_avg_age,
@@ -813,7 +814,7 @@ async def get_demographic_insights(
             max(numero_idade_paciente) as max_age,
             countIf(tipo_sexo_paciente = 'F') as total_female,
             countIf(tipo_sexo_paciente = 'M') as total_male
-        FROM events 
+        FROM events
         {where_clause}
         """
 
@@ -856,7 +857,7 @@ async def get_vaccine_performance_analysis(
 
         # Main vaccine performance metrics
         performance_query = f"""
-        SELECT 
+        SELECT
             sigla_vacina as vaccine_code,
             descricao_vacina as vaccine_name,
             count(*) as total_doses,
@@ -872,7 +873,7 @@ async def get_vaccine_performance_analysis(
             countIf(toInt32OrNull(codigo_dose_vacina)  = 2) as second_doses,
             countIf(toInt32OrNull(codigo_dose_vacina)  >= 3) as boosters,
             round(countIf(toInt32OrNull(codigo_dose_vacina)  >= 2) / uniq(codigo_paciente) * 100, 2) as completion_rate
-        FROM events 
+        FROM events
         {where_clause}
         GROUP BY sigla_vacina, descricao_vacina
         ORDER BY total_doses DESC
@@ -917,12 +918,12 @@ async def get_vaccine_performance_analysis(
             )
 
             trends_query = f"""
-            SELECT 
+            SELECT
                 sigla_vacina as vaccine_code,
                 toDate(data_vacina) as date,
                 count(*) as daily_doses,
                 uniq(codigo_paciente) as daily_patients
-            FROM events 
+            FROM events
             {trend_where_clause}
             GROUP BY sigla_vacina, toDate(data_vacina)
             ORDER BY vaccine_code, date
@@ -953,7 +954,7 @@ async def get_vaccine_performance_analysis(
             "generated_at": datetime.now().isoformat(),
             "include_trends": include_trends,
             "filters_applied": len(
-                [k for k, v in filters.dict(exclude_unset=True).items() if v]
+                [k for k, v in filters.model_dump(exclude_unset=True).items() if v]
             ),
         }
 
@@ -1008,7 +1009,7 @@ async def advanced_search_with_filters(
         # Handle export format
         if export_format:
             export_query = f"""
-            SELECT 
+            SELECT
                 codigo_paciente,
                 sigla_vacina,
                 descricao_vacina,
@@ -1021,7 +1022,7 @@ async def advanced_search_with_filters(
                 codigo_dose_vacina,
                 nome_razao_social_estabelecimento,
                 descricao_tipo_estabelecimento
-            FROM events 
+            FROM events
             {where_clause}
             ORDER BY data_vacina DESC
             LIMIT 1000
@@ -1051,7 +1052,7 @@ async def advanced_search_with_filters(
         params["limit"] = pagination.limit + 1
 
         search_query = f"""
-        SELECT 
+        SELECT
             row_number() OVER (ORDER BY data_vacina DESC) as row_id,
             codigo_paciente,
             sigla_vacina,
@@ -1064,7 +1065,7 @@ async def advanced_search_with_filters(
             descricao_dose_vacina,
             codigo_dose_vacina,
             nome_razao_social_estabelecimento
-        FROM events 
+        FROM events
         {where_clause}
         ORDER BY data_vacina DESC
         LIMIT %(limit)s
@@ -1114,7 +1115,7 @@ async def get_real_time_statistics(client: ClickHouseDep) -> Dict[str, Any]:
 
         # Today's statistics
         today_query = f"""
-        SELECT 
+        SELECT
             count(*) as today_vaccinations,
             uniq(codigo_paciente) as today_patients,
             uniq(sigla_vacina) as vaccines_used_today,
@@ -1134,7 +1135,7 @@ async def get_real_time_statistics(client: ClickHouseDep) -> Dict[str, Any]:
 
         # Weekly trend
         weekly_trend_query = f"""
-        SELECT 
+        SELECT
             toDate(data_vacina) as date,
             count(*) as daily_count
         FROM events
