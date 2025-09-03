@@ -41,7 +41,7 @@ from .clickhouse_rules import clickhouse_rules
 import unicodedata
 import re
 
-CHART_KEYWORDS = {"grafico", "grafico", "visualizacao", "visualização", "gráfico", "histograma", "tabela"}
+CHART_KEYWORDS = {"grafico", "grafico", "visualizacao", "visualização", "gráfico", "histograma"}
 
 
 def _normalize(s: str) -> str:
@@ -181,11 +181,10 @@ def render_plotly_chart(
         else:
             fig = px.bar(df, x=x, y=y, color=color, title=title)
 
-        # Ensure JSON serialization
+        # JSON 100% serializável
         figure_json = fig.to_plotly_json()
-        
-        # Force the tool to return structured data, not HTML
-        result = {
+
+        return {
             "type": "plotly_figure",
             "schema": "plotly",
             "kind": kind,
@@ -196,9 +195,6 @@ def render_plotly_chart(
             },
             "figure": figure_json,
         }
-        
-        # Return as a structured object, not a string
-        return result
 
     except Exception as e:
         return {"type": "chart_error", "message": f"Erro ao gerar gráfico: {str(e)}"}
@@ -762,43 +758,28 @@ async def execute_sql_analytics_query(
                     event = getattr(chunk, "event", None)
                     content = getattr(chunk, "content", None)
 
-                    # Enhanced tool result parsing
+                    # === Only pass through tool HTML; drop markdown chatter ===
                     if event == "ToolResult":
-                        chart_data = None
-                        
-                        # Direct dict check
                         if isinstance(content, dict) and content.get("type") in {"plotly_figure", "chart_error"}:
-                            chart_data = content
-                        
-                        # String parsing attempts
-                        elif isinstance(content, str):
-                            # Try JSON parsing
-                            try:
-                                parsed = json.loads(content)
-                                if isinstance(parsed, dict) and parsed.get("type") in {"plotly_figure", "chart_error"}:
-                                    chart_data = parsed
-                            except:
-            
-                                try:
-                                    import ast
-                                    parsed = ast.literal_eval(content)
-                                    if isinstance(parsed, dict) and parsed.get("type") in {"plotly_figure", "chart_error"}:
-                                        chart_data = parsed
-                                except:
-                                    pass
-                        
-                        if chart_data:
                             payload = {
                                 "status": "streaming",
                                 "event": event,
                                 "timestamp": datetime.now().isoformat(),
                                 "is_chart": True,
-                                "chart": chart_data,
+                                "chart": content,  # -> contém "figure": {data, layout}
                             }
                             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
                             continue
-
-                    # Skip text content for chart requests to avoid base64 issues
+                    if isinstance(content, str) and content.strip().startswith("{'type':"):
+                        try:
+                            parsed = ast.literal_eval(content)
+                            if isinstance(parsed, dict) and parsed.get("type") in {"plotly_figure", "chart_error"}:
+                                payload = {"status":"streaming","event":event,"timestamp":datetime.now().isoformat(),
+                                        "is_chart":True,"chart":parsed}
+                                yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+                                continue
+                        except Exception:
+                            pass 
                     if is_chart and event in ("RunResponseContent", "RunResult"):
                         continue
 
