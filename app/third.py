@@ -338,7 +338,7 @@ class AnalyticsAgent:
             add_history_to_messages=True,
             num_history_runs=3,    
             search_previous_sessions_history=False,
-            markdown=False,
+            markdown=True,
             # IMPORTANT: trim auto tools to avoid extra hops
             search_knowledge=True,
             read_chat_history=True,
