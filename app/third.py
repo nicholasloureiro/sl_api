@@ -181,10 +181,11 @@ def render_plotly_chart(
         else:
             fig = px.bar(df, x=x, y=y, color=color, title=title)
 
-        # JSON 100% serializável
+        # Ensure JSON serialization
         figure_json = fig.to_plotly_json()
-
-        return {
+        
+        # Force the tool to return structured data, not HTML
+        result = {
             "type": "plotly_figure",
             "schema": "plotly",
             "kind": kind,
@@ -195,6 +196,9 @@ def render_plotly_chart(
             },
             "figure": figure_json,
         }
+        
+        # Return as a structured object, not a string
+        return result
 
     except Exception as e:
         return {"type": "chart_error", "message": f"Erro ao gerar gráfico: {str(e)}"}
