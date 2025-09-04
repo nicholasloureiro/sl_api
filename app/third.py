@@ -153,7 +153,7 @@ _CLICKHOUSE_CLIENT_SINGLETON = ClickHouseClient()
 @tool(show_result=True, stop_after_tool_call=True)
 def render_plotly_chart(
     sql: str,
-    kind: str = "bar",
+    kind: str = "bar", 
     x: Optional[str] = None,
     y: Optional[str] = None,
     color: Optional[str] = None,
@@ -168,6 +168,7 @@ def render_plotly_chart(
         if x is None and len(cols) >= 1: x = cols[0]
         if y is None and len(cols) >= 2: y = cols[1]
 
+        # Criar gráfico
         if kind == "line":
             fig = px.line(df, x=x, y=y, color=color, title=title)
         elif kind == "scatter":
@@ -181,10 +182,16 @@ def render_plotly_chart(
         else:
             fig = px.bar(df, x=x, y=y, color=color, title=title)
 
-        # Ensure JSON serialization
+        # CRÍTICO: Converter para JSON serializável
         figure_json = fig.to_plotly_json()
         
-        # Force the tool to return structured data, not HTML
+        # Converter arrays numpy para listas (fix para serialização)
+        for trace in figure_json['data']:
+            if 'x' in trace and hasattr(trace['x'], 'tolist'):
+                trace['x'] = trace['x'].tolist()
+            if 'y' in trace and hasattr(trace['y'], 'tolist'):
+                trace['y'] = trace['y'].tolist()
+        
         result = {
             "type": "plotly_figure",
             "schema": "plotly",
@@ -195,9 +202,7 @@ def render_plotly_chart(
                 "sql": sql.rstrip(";"),
             },
             "figure": figure_json,
-        }
-        
-        # Return as a structured object, not a string
+        }     
         return result
 
     except Exception as e:
@@ -380,6 +385,10 @@ When a question requires data, write ONE correct SQL query and execute it via th
       {"grafico", "grafico", "visualizacao", "visualização", "gráfico", "histograma"}
     - If NO chart keywords are present, ALWAYS use `ch_run_sql_query` instead
     - For regular data queries without chart keywords, return tabular results
+    - When calling render_plotly_chart, return ONLY the tool result  
+    - NEVER add explanatory text like "Aqui está o gráfico"
+    - Return the raw dict object from the tool directly
+    - No additional text, explanations, or formatting
 
     **Chart Detection Logic**:
     - Check user input for chart keywords using word boundaries
