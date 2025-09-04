@@ -153,7 +153,7 @@ _CLICKHOUSE_CLIENT_SINGLETON = ClickHouseClient()
 @tool(show_result=True, stop_after_tool_call=True)
 def render_plotly_chart(
     sql: str,
-    kind: str = "bar", 
+    kind: str = "bar",
     x: Optional[str] = None,
     y: Optional[str] = None,
     color: Optional[str] = None,
@@ -168,7 +168,6 @@ def render_plotly_chart(
         if x is None and len(cols) >= 1: x = cols[0]
         if y is None and len(cols) >= 2: y = cols[1]
 
-        # Criar gráfico
         if kind == "line":
             fig = px.line(df, x=x, y=y, color=color, title=title)
         elif kind == "scatter":
@@ -182,16 +181,10 @@ def render_plotly_chart(
         else:
             fig = px.bar(df, x=x, y=y, color=color, title=title)
 
-        # CRÍTICO: Converter para JSON serializável
+        # Ensure JSON serialization
         figure_json = fig.to_plotly_json()
         
-        # Converter arrays numpy para listas (fix para serialização)
-        for trace in figure_json['data']:
-            if 'x' in trace and hasattr(trace['x'], 'tolist'):
-                trace['x'] = trace['x'].tolist()
-            if 'y' in trace and hasattr(trace['y'], 'tolist'):
-                trace['y'] = trace['y'].tolist()
-        
+        # Force the tool to return structured data, not HTML
         result = {
             "type": "plotly_figure",
             "schema": "plotly",
@@ -202,7 +195,9 @@ def render_plotly_chart(
                 "sql": sql.rstrip(";"),
             },
             "figure": figure_json,
-        }     
+        }
+        
+        # Return as a structured object, not a string
         return result
 
     except Exception as e:
