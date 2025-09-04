@@ -335,8 +335,8 @@ class AnalyticsAgent:
             session_id=session_id,
             storage=self.agent_storage,
             knowledge=self.agent_knowledge,
-            add_history_to_messages=False,
-            num_history_runs=0,          
+            add_history_to_messages=True,
+            num_history_runs=3,    
             search_previous_sessions_history=False,
             markdown=False,
             # IMPORTANT: trim auto tools to avoid extra hops
