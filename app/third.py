@@ -777,30 +777,23 @@ async def execute_sql_analytics_query(
                     event = getattr(chunk, "event", None)
                     content = getattr(chunk, "content", None)
 
-                    # === Only pass through tool HTML; drop markdown chatter ===
+          
+                    # No loop de streaming, substitua a seção ToolResult por:
                     if event == "ToolResult":
                         if isinstance(content, dict) and content.get("type") in {"plotly_figure", "chart_error"}:
                             payload = {
                                 "status": "streaming",
-                                "event": event,
+                                "event": "ToolCallCompleted", 
                                 "timestamp": datetime.now().isoformat(),
                                 "is_chart": True,
-                                "chart": content,  # -> contém "figure": {data, layout}
+                                "content": json.dumps(content, ensure_ascii=False)  # Serializar corretamente
                             }
                             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
                             continue
-                    if isinstance(content, str) and content.strip().startswith("{'type':"):
-                        try:
-                            parsed = ast.literal_eval(content)
-                            if isinstance(parsed, dict) and parsed.get("type") in {"plotly_figure", "chart_error"}:
-                                payload = {"status":"streaming","event":event,"timestamp":datetime.now().isoformat(),
-                                        "is_chart":True,"chart":parsed}
-                                yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
-                                continue
-                        except Exception:
-                            pass 
+
+                    # Filtrar texto adicional para charts
                     if is_chart and event in ("RunResponseContent", "RunResult"):
-                        continue
+                        continue  # Pular texto adicional quando é chart
 
                     payload = {
                         "status": "streaming",
