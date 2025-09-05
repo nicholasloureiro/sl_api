@@ -69,7 +69,7 @@ async def get_dashboard_overview(
             countIf(numero_idade_paciente >= 30 AND numero_idade_paciente < 50) as adults,
             countIf(numero_idade_paciente >= 50 AND numero_idade_paciente < 65) as middle_aged,
             countIf(numero_idade_paciente >= 65) as seniors
-        FROM events
+        FROM events_v2
         {where_clause}
         """
 
@@ -119,7 +119,7 @@ async def get_dashboard_overview(
                 toDate(data_vacina) as date,
                 count(*) as daily_count,
                 uniq(codigo_paciente) as unique_patients
-            FROM events
+            FROM events_v2
             {trend_where_clause}
             GROUP BY toDate(data_vacina)
             ORDER BY date
@@ -146,7 +146,7 @@ async def get_dashboard_overview(
                 sigla_vacina as vaccine,
                 count(*) as count,
                 round(count(*) * 100.0 / sum(count(*)) OVER(), 2) as percentage
-            FROM events
+            FROM events_v2
             {where_clause}
             GROUP BY sigla_vacina
             ORDER BY count DESC
@@ -228,7 +228,7 @@ async def get_comprehensive_filter_metadata(client: ClickHouseDep) -> FilterStat
             sigla_vacina as value,
             count(*) as count,
             uniq(codigo_paciente) as unique_patients
-        FROM events
+        FROM events_v2
         WHERE sigla_vacina != '' AND sigla_vacina IS NOT NULL
         GROUP BY sigla_vacina
         ORDER BY count DESC
@@ -252,7 +252,7 @@ async def get_comprehensive_filter_metadata(client: ClickHouseDep) -> FilterStat
             nome_uf_estabelecimento as name,
             count(*) as count,
             uniq(nome_municipio_estabelecimento) as cities_count
-        FROM events
+        FROM events_v2
         WHERE sigla_uf_estabelecimento != '' AND sigla_uf_estabelecimento IS NOT NULL
         GROUP BY sigla_uf_estabelecimento, nome_uf_estabelecimento
         ORDER BY count DESC
@@ -275,7 +275,7 @@ async def get_comprehensive_filter_metadata(client: ClickHouseDep) -> FilterStat
             nome_municipio_estabelecimento as value,
             sigla_uf_estabelecimento as state,
             count(*) as count
-        FROM events
+        FROM events_v2
         WHERE nome_municipio_estabelecimento != '' AND nome_municipio_estabelecimento IS NOT NULL
         GROUP BY nome_municipio_estabelecimento, sigla_uf_estabelecimento
         ORDER BY count DESC
@@ -300,7 +300,7 @@ async def get_comprehensive_filter_metadata(client: ClickHouseDep) -> FilterStat
             descricao_tipo_estabelecimento as description,
             count(*) as count,
             uniq(codigo_cnes_estabelecimento) as establishments_count
-        FROM events
+        FROM events_v2
         WHERE codigo_tipo_estabelecimento IS NOT NULL
         GROUP BY codigo_tipo_estabelecimento, descricao_tipo_estabelecimento
         ORDER BY count DESC
@@ -333,7 +333,7 @@ async def get_comprehensive_filter_metadata(client: ClickHouseDep) -> FilterStat
             countIf(numero_idade_paciente IS NULL) as missing_age,
             countIf(tipo_sexo_paciente IS NULL OR tipo_sexo_paciente = '') as missing_gender,
             countIf(sigla_uf_paciente IS NULL OR sigla_uf_paciente = '') as missing_state
-        FROM events
+        FROM events_v2
         """
 
         result = client.query(general_query)
@@ -488,7 +488,7 @@ async def get_vaccinations_with_comprehensive_filters(
             codigo_lote_vacina,
             descricao_local_aplicacao,
             codigo_cnes_estabelecimento
-        FROM events
+        FROM events_v2
         {where_clause}
         ORDER BY {pagination.sort_by} {pagination.sort_order.value}
         LIMIT %(limit)s
@@ -590,7 +590,7 @@ async def get_advanced_time_series(
         SELECT
             {date_trunc} as period,
             {', '.join(selected_metrics)}
-        FROM events
+        FROM events_v2
         {where_clause}
         GROUP BY {date_trunc}
         ORDER BY period ASC
@@ -650,7 +650,7 @@ async def get_geographic_distribution(
                 uniq(nome_municipio_estabelecimento) as cities_count,
                 countIf(toInt32OrNull(codigo_dose_vacina) >= 2) as completed_series,
                 round(countIf(toInt32OrNull(codigo_dose_vacina) >= 2) / uniq(codigo_paciente) * 100, 2) as completion_rate
-            FROM events
+            FROM events_v2
             {where_clause}
             GROUP BY sigla_uf_estabelecimento, nome_uf_estabelecimento
             ORDER BY total_vaccinations DESC
@@ -665,7 +665,7 @@ async def get_geographic_distribution(
                 count(*) as total_vaccinations,
                 uniq(codigo_paciente) as unique_patients,
                 round(avg(numero_idade_paciente), 2) as avg_age
-            FROM events
+            FROM events_v2
             {where_clause}
             GROUP BY nome_municipio_estabelecimento, sigla_uf_estabelecimento, nome_uf_estabelecimento
             ORDER BY total_vaccinations DESC
@@ -687,7 +687,7 @@ async def get_geographic_distribution(
                 round(avg(numero_idade_paciente), 2) as avg_age,
                 uniq(sigla_uf_estabelecimento) as states_count,
                 uniq(nome_municipio_estabelecimento) as cities_count
-            FROM events
+            FROM events_v2
             {where_clause}
             GROUP BY region
             ORDER BY total_vaccinations DESC
@@ -743,7 +743,7 @@ async def get_demographic_insights(
                 count(*) as count,
                 uniq(codigo_paciente) as unique_patients,
                 round(avg(numero_idade_paciente), 2) as avg_age
-            FROM events
+            FROM events_v2
             {where_clause}
             GROUP BY age_group{'' if breakdown_by == 'age_only' else ', gender'}
             ORDER BY age_group{'' if breakdown_by == 'age_only' else ', gender'}
@@ -767,7 +767,7 @@ async def get_demographic_insights(
                 countIf(numero_idade_paciente < 18) as children,
                 countIf(numero_idade_paciente >= 18 AND numero_idade_paciente < 65) as adults,
                 countIf(numero_idade_paciente >= 65) as seniors
-            FROM events
+            FROM events_v2
             {where_clause}
             GROUP BY tipo_sexo_paciente
             ORDER BY count DESC
@@ -789,7 +789,7 @@ async def get_demographic_insights(
                 round(avg(numero_idade_paciente), 2) as avg_age,
                 countIf(tipo_sexo_paciente = 'F') as female_count,
                 countIf(tipo_sexo_paciente = 'M') as male_count
-            FROM events
+            FROM events_v2
             {where_clause}
             AND nome_raca_cor_paciente IS NOT NULL
             AND nome_raca_cor_paciente != ''
@@ -814,7 +814,7 @@ async def get_demographic_insights(
             max(numero_idade_paciente) as max_age,
             countIf(tipo_sexo_paciente = 'F') as total_female,
             countIf(tipo_sexo_paciente = 'M') as total_male
-        FROM events
+        FROM events_v2
         {where_clause}
         """
 
@@ -873,7 +873,7 @@ async def get_vaccine_performance_analysis(
             countIf(toInt32OrNull(codigo_dose_vacina)  = 2) as second_doses,
             countIf(toInt32OrNull(codigo_dose_vacina)  >= 3) as boosters,
             round(countIf(toInt32OrNull(codigo_dose_vacina)  >= 2) / uniq(codigo_paciente) * 100, 2) as completion_rate
-        FROM events
+        FROM events_v2
         {where_clause}
         GROUP BY sigla_vacina, descricao_vacina
         ORDER BY total_doses DESC
@@ -923,7 +923,7 @@ async def get_vaccine_performance_analysis(
                 toDate(data_vacina) as date,
                 count(*) as daily_doses,
                 uniq(codigo_paciente) as daily_patients
-            FROM events
+            FROM events_v2
             {trend_where_clause}
             GROUP BY sigla_vacina, toDate(data_vacina)
             ORDER BY vaccine_code, date
@@ -1022,7 +1022,7 @@ async def advanced_search_with_filters(
                 codigo_dose_vacina,
                 nome_razao_social_estabelecimento,
                 descricao_tipo_estabelecimento
-            FROM events
+            FROM events_v2
             {where_clause}
             ORDER BY data_vacina DESC
             LIMIT 1000
@@ -1065,7 +1065,7 @@ async def advanced_search_with_filters(
             descricao_dose_vacina,
             codigo_dose_vacina,
             nome_razao_social_estabelecimento
-        FROM events
+        FROM events_v2
         {where_clause}
         ORDER BY data_vacina DESC
         LIMIT %(limit)s
@@ -1122,7 +1122,7 @@ async def get_real_time_statistics(client: ClickHouseDep) -> Dict[str, Any]:
             countIf(codigo_dose_vacina = 1) as today_first_doses,
             countIf(codigo_dose_vacina = 2) as today_second_doses,
             countIf(codigo_dose_vacina >= 3) as today_boosters
-        FROM events
+        FROM events_v2
         WHERE {get_clickhouse_today_condition()}
         """
 
@@ -1138,7 +1138,7 @@ async def get_real_time_statistics(client: ClickHouseDep) -> Dict[str, Any]:
         SELECT
             toDate(data_vacina) as date,
             count(*) as daily_count
-        FROM events
+        FROM events_v2
         WHERE {get_clickhouse_date_condition(7)}
         GROUP BY toDate(data_vacina)
         ORDER BY date
@@ -1176,7 +1176,7 @@ async def health_check(client: ClickHouseDep) -> Dict[str, Any]:
     """Comprehensive health check"""
     try:
         start_time = time.time()
-        result = client.query("SELECT count(*) FROM events LIMIT 1")
+        result = client.query("SELECT count(*) FROM events_v2 LIMIT 1")
         db_response_time = (time.time() - start_time) * 1000
 
         total_records = result.result_rows[0][0] if result.result_rows else 0
