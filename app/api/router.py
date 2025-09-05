@@ -481,7 +481,7 @@ async def get_vaccinations_with_comprehensive_filters(
             nome_municipio_paciente,
             sigla_uf_paciente,
             nome_uf_paciente,
-            descricao_dose_vacina,
+           -- descricao_dose_vacina,
             codigo_dose_vacina,
             nome_razao_social_estabelecimento,
             descricao_tipo_estabelecimento,
@@ -1018,7 +1018,7 @@ async def advanced_search_with_filters(
                 tipo_sexo_paciente,
                 nome_municipio_paciente,
                 sigla_uf_paciente,
-                descricao_dose_vacina,
+               -- descricao_dose_vacina,
                 codigo_dose_vacina,
                 nome_razao_social_estabelecimento,
                 descricao_tipo_estabelecimento
@@ -1062,7 +1062,7 @@ async def advanced_search_with_filters(
             tipo_sexo_paciente,
             nome_municipio_paciente,
             sigla_uf_paciente,
-            descricao_dose_vacina,
+            -- descricao_dose_vacina,
             codigo_dose_vacina,
             nome_razao_social_estabelecimento
         FROM events
