@@ -1022,7 +1022,7 @@ async def advanced_search_with_filters(
                 codigo_dose_vacina,
                 nome_razao_social_estabelecimento,
                 descricao_tipo_estabelecimento
-            FROM events_v2
+            FROM events
             {where_clause}
             ORDER BY data_vacina DESC
             LIMIT 1000
@@ -1065,7 +1065,7 @@ async def advanced_search_with_filters(
             descricao_dose_vacina,
             codigo_dose_vacina,
             nome_razao_social_estabelecimento
-        FROM events_v2
+        FROM events
         {where_clause}
         ORDER BY data_vacina DESC
         LIMIT %(limit)s
